@@ -1,0 +1,6 @@
+Flask
+beautifulsoup4
+networkx
+pyvis
+rdflib
+requests

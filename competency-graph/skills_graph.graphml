@@ -1,0 +1,130 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="d1" for="node" attr.name="link" attr.type="string" />
+  <key id="d0" for="node" attr.name="description" attr.type="string" />
+  <graph edgedefault="directed">
+    <node id="Projektijuhtimine">
+      <data key="d0">Kutseregister: Organiseerib ja juhib kõike projektiga seonduvat, et tagada projekti edukas ja tähtaegne elluviimine. Koordineerib töötajate, asutuste, organisatsioonide jt tegemisi ja osalemist projektides.</data>
+      <data key="d1">https://oppekava.edu.ee/a/Projektijuhtimine</data>
+    </node>
+    <node id="Riskijuhtimine">
+      <data key="d0">Oskuste kompassi määratlus: Juhib riskide haldamisega seotud tegevusi ning vastutab riskijuhtimisplaanis toodud meetmete elluviimise eest, et tagada organisatsiooni või riigi toimepidevus.
+AI genereeritud definitsioon: Riskijuhtimise oskus on võime tuvastada, analüüsida ja juhtida riske, et minimeerida nende potentsiaalset negatiivset mõju organisatsioonile, projektile või tegevusele. See hõlmab mitmeid komponente ja protsesse, mis aitavad kindlaks teha, kuidas riske kõige tõhusamalt käsitleda.</data>
+      <data key="d1">https://oppekava.edu.ee/a/Riskijuhtimine</data>
+    </node>
+    <node id="IKT-2Driski juhtimine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/IKT-2Driski_juhtimine</data>
+    </node>
+    <node id="Riskide minimeerimine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Riskide_minimeerimine</data>
+    </node>
+    <node id="Kiiresti mõtlemine">
+      <data key="d0">Töötleb ja mõistab fakte ning nende seoste kõige olulisemaid aspekte kiiresti ja täpselt.</data>
+      <data key="d1">https://oppekava.edu.ee/a/Kiiresti_m%C3%B5tlemine</data>
+    </node>
+    <node id="Analüütiline mõtlemine">
+      <data key="d0">Kasutab mõtlemisel loogikat ja süsteemset arutlust, et märgata nähtustevahelisi suhteid, teha järeldusi, tuvastada alternatiivsete lahenduste tugevad ja nõrgad küljed ning leida</data>
+      <data key="d1">https://oppekava.edu.ee/a/Analüütiline_mõtlemine</data>
+    </node>
+    <node id="Võrdlemine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Võrdlemine</data>
+    </node>
+    <node id="Seostamine">
+      <data key="d0">Analüüsib, näeb ja loob seoseid olemasoleva ja uue info, asjade ja nähtuste vahel ning asetab info loogiliselt seostatud süsteemi.</data>
+      <data key="d1">https://oppekava.edu.ee/a/Seostamine</data>
+    </node>
+    <node id="Kriitiline mõtlemine">
+      <data key="d0">Hindab teabe, argumentide jm kvaliteeti, töötleb ja mõistab fakte ning nende seoste kõige olulisemaid aspekte. Kahtleb nähtustevaheliste seoste loogilisuses, paikapidavuses,</data>
+      <data key="d1">https://oppekava.edu.ee/a/Kriitiline_mõtlemine</data>
+    </node>
+    <node id="Induktiivne mõtlemine">
+      <data key="d0">Teeb analüüsimisel üksikute teadmiste põhjal üldistavaid järeldusi.</data>
+      <data key="d1">https://oppekava.edu.ee/a/Induktiivne_mõtlemine</data>
+    </node>
+    <node id="Olulise eristamine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Olulise_eristamine</data>
+    </node>
+    <node id="Enesereflektsioonioskus">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Enesereflektsioonioskus</data>
+    </node>
+    <node id="Kliendikäitumise analüüsimine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Kliendikäitumise_analüüsimine</data>
+    </node>
+    <node id="Deduktiivne mõtlemine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Deduktiivne_mõtlemine</data>
+    </node>
+    <node id="Loogiline mõtlemine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Loogiline_mõtlemine</data>
+    </node>
+    <node id="Strateegiline mõtlemine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Strateegiline_mõtlemine</data>
+    </node>
+    <node id="Kontseptuaalne mõtlemine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Kontseptuaalne_mõtlemine</data>
+    </node>
+    <node id="Abstraktne mõtlemine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Abstraktne_mõtlemine</data>
+    </node>
+    <node id="Terviklikult mõtlemine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Terviklikult_mõtlemine</data>
+    </node>
+    <node id="Ainetevaheliste seoste loomine">
+      <data key="d0">Loob ja aitab teistel luua seoseid eri distsipliinide või valdkondade vahel, et lahendada mitmekülgseid teadmisi ja lähenemisi nõudvaid probleeme.</data>
+      <data key="d1">https://oppekava.edu.ee/a/Ainetevaheliste_seoste_loomine</data>
+    </node>
+    <node id="Kestlikusvaldkonnas seoste loomine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Kestlikusvaldkonnas_seoste_loomine</data>
+    </node>
+    <node id="Mõtlemisoskus">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Mõtlemisoskus</data>
+    </node>
+    <node id="Rakenduslik mõtlemine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Rakenduslik_mõtlemine</data>
+    </node>
+    <node id="Loovmõtlemine">
+      <data key="d0" />
+      <data key="d1">https://oppekava.edu.ee/a/Loovmõtlemine</data>
+    </node>
+    <node id="Töövahendi kasutamise oskus (EKR tase 1)">
+      <data key="d0">Kasutab lihtsaid seadmeid ettearvatavas ja stabiilses keskkonnas</data>
+      <data key="d1">https://oppekava.edu.ee/a/T%C3%B6%C3%B6vahendi_kasutamise_oskus_(EKR_tase_1)</data>
+    </node>
+    <edge source="Riskijuhtimine" target="Projektijuhtimine" />
+    <edge source="IKT-2Driski juhtimine" target="Riskijuhtimine" />
+    <edge source="Riskide minimeerimine" target="Riskijuhtimine" />
+    <edge source="Kiiresti mõtlemine" target="Analüütiline mõtlemine" />
+    <edge source="Analüütiline mõtlemine" target="Mõtlemisoskus" />
+    <edge source="Võrdlemine" target="Analüütiline mõtlemine" />
+    <edge source="Seostamine" target="Analüütiline mõtlemine" />
+    <edge source="Kriitiline mõtlemine" target="Analüütiline mõtlemine" />
+    <edge source="Induktiivne mõtlemine" target="Analüütiline mõtlemine" />
+    <edge source="Olulise eristamine" target="Analüütiline mõtlemine" />
+    <edge source="Enesereflektsioonioskus" target="Analüütiline mõtlemine" />
+    <edge source="Kliendikäitumise analüüsimine" target="Analüütiline mõtlemine" />
+    <edge source="Deduktiivne mõtlemine" target="Analüütiline mõtlemine" />
+    <edge source="Loogiline mõtlemine" target="Analüütiline mõtlemine" />
+    <edge source="Strateegiline mõtlemine" target="Analüütiline mõtlemine" />
+    <edge source="Kontseptuaalne mõtlemine" target="Analüütiline mõtlemine" />
+    <edge source="Abstraktne mõtlemine" target="Analüütiline mõtlemine" />
+    <edge source="Terviklikult mõtlemine" target="Analüütiline mõtlemine" />
+    <edge source="Ainetevaheliste seoste loomine" target="Seostamine" />
+    <edge source="Kestlikusvaldkonnas seoste loomine" target="Seostamine" />
+    <edge source="Rakenduslik mõtlemine" target="Mõtlemisoskus" />
+    <edge source="Loovmõtlemine" target="Mõtlemisoskus" />
+  </graph>
+</graphml>

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "kokk",
+    "description": "asd",
+    "note": "asd",
+    "skills": [
+      "Analüütiline mõtlemine",
+      "mõtlemisoskus"
+    ]
+  },
+  {
+    "name": "politseinik",
+    "description": "asd",
+    "note": "asd",
+    "skills": [
+      "Analüütiline mõtlemine"
+    ]
+  },
+  {
+    "name": "kana",
+    "description": "kana",
+    "note": "kana",
+    "skills": [
+      "Enesereflektsioonioskus"
+    ]
+  },
+  {
+    "name": "it",
+    "description": "itttt",
+    "note": "asdasdasda",
+    "skills": [
+      "Projektijuhtimine",
+      "Avatud suhtlemine",
+      "Aktiivne kuulamine"
+    ]
+  }
+]

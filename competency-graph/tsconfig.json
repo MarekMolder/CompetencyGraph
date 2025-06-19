@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "outDir": "./static/js",
+    "lib": ["ES6", "DOM"]
+  },
+  "include": ["./static/ts/**/*.ts"],
+  "exclude": ["node_modules"]
+}
