@@ -1,19 +1,16 @@
 from flask import Flask
 from pathlib import Path
 
-from app.routes.job_routes import jobs_bp
-from app.routes.graph_routes import main_bp
-
 def create_app():
-    """
-        Create and configure the Flask application.
-    """
-    base_dir = Path(__file__).resolve().parent.parent
-    app = Flask(__name__,
-                template_folder=str(base_dir / "templates"),
-                static_folder=str(base_dir / "static"))
+    project_root = Path(__file__).resolve().parent.parent  # -> .../competency-graph
+    app = Flask(
+        __name__,
+        template_folder=str(project_root / "templates"),
+        static_folder=str(project_root / "static"),
+    )
 
+    from .routes.graph_routes import main_bp
+    from .routes.job_routes import jobs_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(jobs_bp)
-
     return app
