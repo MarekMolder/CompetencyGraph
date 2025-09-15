@@ -2,58 +2,77 @@ from flask import Blueprint, render_template, request, jsonify
 import asyncio
 
 from logic import graph_utils
-from logic.graph_utils import parse_all_skills_async, get_all_skills, SKILLS_URL
+from logic.graph_utils import parse_all_data_async, get_all_data, SKILLS_URL, COMPETENCIES_URL, TEGEVUSNAITAJAD_URL, KNOBITID_URL, normalize_key
 
 main_bp = Blueprint("main", __name__)
 
 @main_bp.route("/")
 def index():
-    """Render the main index page."""
     return render_template("index.html")
 
 @main_bp.route("/graph")
 def get_graph_data():
-    """
-    Endpoint to generate graph data based on a given skill.
-
-    Status Codes:
-        200: Successfully returned graph data.
-        404: Skill not found or has no subskills.
-        500: Internal server error during processing.
-    """
     skill = request.args.get("skill", "").strip()
     limit_recursion = request.args.get("limit_recursion", "false").lower() == "true"
     max_depth = int(request.args.get("max_depth", 9999999))
 
-    # Dünaamilised lipud enne parse’i
     graph_utils.LIMIT_RECURSION = limit_recursion
     graph_utils.MAX_DEPTH = max_depth
 
     try:
         if not skill:
-            skill_list = get_all_skills(SKILLS_URL)
-        else:
-            skill_list = [skill.replace(" ", "_")]
+            skills = get_all_data(SKILLS_URL)
+            competencies = get_all_data(COMPETENCIES_URL)
+            tegevusnaitajad = get_all_data(TEGEVUSNAITAJAD_URL)
+            knobitid = get_all_data(KNOBITID_URL)
 
-        # ⬇️ ASÜNKROONNE PARSING KÄIMA
-        data, depths = asyncio.run(parse_all_skills_async(skill_list))
+            data_list = skills + competencies + tegevusnaitajad + knobitid
+            skills_set = {normalize_key(s) for s in skills}
+            competencies_set = {normalize_key(c) for c in competencies}
+            tn_set = {normalize_key(t) for t in tegevusnaitajad}
+            knobit_set = {normalize_key(k) for k in knobitid}
+        else:
+            data_list = [normalize_key(skill)]
+            skills_set = set()
+            competencies_set = set()
+            tn_set = set()
+            knobit_set = set()
+
+        data, depths = asyncio.run(parse_all_data_async(data_list))
 
         if not data or all(
             len(info.get("subskills", [])) == 0 and
             len(info.get("prerequisites", [])) == 0 and
-            len(info.get("competency", [])) == 0
+            len(info.get("tegevusnaitajad", [])) == 0
             for info in data.values()
         ):
-            return jsonify({"error": "Oskust ei leitud"}), 404
+            return jsonify({"error": "Oskust/kompetentsi ei leitud"}), 404
 
-        nodes = []
-        edges = []
+        nodes, edges = [], []
 
-        for label, info in data.items():
-            level = depths.get(label, -1)
+        for key, info in data.items():
+            label = info.get("label", key.replace("_", " "))
+            level = depths.get(key, -1)
+
+            if key in competencies_set:
+                node_label = f"Kompetents: {label}"
+                color = "#FFA500"  # oranž
+            elif key in tn_set:
+                node_label = f"Tegevusnäitaja: {label}"
+                color = "#27ae60"  # roheline
+            elif key in knobit_set:
+                node_label = f"Knobit: {label}"
+                color = "#9b59b6"  # lilla
+            elif key in skills_set:
+                node_label = f"Oskus: {label}"
+                color = "#a1c9f1"  # sinine
+            else:
+                node_label = f"Tundmatu: {label}"
+                color = "#7f8c8d"  # hall
+
             nodes.append({
-                "id": label,
-                "label": label,
+                "id": key,
+                "label": node_label,
                 "description": info.get("description", ""),
                 "level": level,
                 "size": 10 + len(info.get("subskills", [])) * 1.5,
@@ -61,37 +80,60 @@ def get_graph_data():
                 "esco_link": info.get("esco_link", ""),
                 "esco_vaste": info.get("esco_vaste", ""),
                 "osk_reg_kood": info.get("osk_reg_kood", ""),
-                "skill_verb": info.get("skill_verb", "")
+                "skill_verb": info.get("skill_verb", ""),
+                "color": color
             })
 
-            # Subskills - haridus:osaOskus -> koosneb
+            # Edges (NB! targetid normaliseeri sama moodi nagu key)
             for sub in info.get("subskills", []):
-                edges.append({
-                    "from": sub,
-                    "to": label,
-                    "color": "#e74c3c",
-                    "label": "koosneb",
-                    "dashes": True,
-                    "arrows": {"to": {"enabled": True, "type": "vee"}}
-                })
+                if sub in data:  # ainult kui target on data-s olemas
+                    edges.append({
+                        "from": sub,
+                        "to": key,
+                        "color": "#e74c3c",
+                        "label": "koosneb",
+                        "dashes": True,
+                        "arrows": {"to": {"enabled": True, "type": "vee"}}
+                    })
 
-            # Prerequisites - #haridus:seotudOskus -> eeldus
+            # Prerequisites
             for pre in info.get("prerequisites", []):
-                edges.append({
-                    "from": pre,
-                    "to": label,
-                    "color": "#2980b9",
-                    "label": "eeldab"
-                })
+                if pre in data:
+                    edges.append({
+                        "from": pre,
+                        "to": key,
+                        "color": "#2980b9",
+                        "label": "eeldab"
+                    })
 
-            # Related - #haridus:eeldab -> õpiväljund
-            for rel in info.get("competency", []):
-                edges.append({
-                    "from": rel,
-                    "to": label,
-                    "color": "#58a55c",
-                    "label": "õpiväljund"
-                })
+            # Tegevusnäitajad
+            for tn in info.get("tegevusnaitajad", []):
+                if tn in data:
+                    edges.append({
+                        "from": tn,
+                        "to": key,
+                        "color": "#27ae60",
+                        "label": "sisaldab Tn"
+                    })
+
+            # Knobitid
+            for kn in info.get("knobitid", []):
+                if kn in data:
+                    edges.append({
+                        "from": kn,
+                        "to": key,
+                        "color": "#9b59b6",
+                        "label": "sisaldab knobitit"
+                    })
+
+            for tn_req in info.get("tn_eeldab", []):
+                if tn_req in data:
+                    edges.append({
+                        "from": tn_req,
+                        "to": key,
+                        "color": "#2980b9",
+                        "label": "Tn eeldab"
+                    })
 
         return jsonify({"nodes": nodes, "edges": edges})
 

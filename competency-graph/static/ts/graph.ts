@@ -56,20 +56,43 @@ async function drawGraph(skill: string): Promise<void> {
   }
 }
 
+function filterGraphBySearch(term: string): void {
+  const lower = term.toLowerCase();
+  const visibleNodes = new Set<string>();
+
+  nodes.get().forEach((n: any) => {
+    if (n.label.toLowerCase().includes(lower)) {
+      visibleNodes.add(n.id);
+    }
+  });
+
+  // Näita ainult neid noded ja nende otseseid seoseid
+  nodes.get().forEach((n: any) => {
+    nodes.update({ id: n.id, hidden: !visibleNodes.has(n.id) });
+  });
+
+  edges.get().forEach((e: any) => {
+    const isVisible = visibleNodes.has(e.from) || visibleNodes.has(e.to);
+    edges.update({ id: e.id, hidden: !isVisible });
+  });
+}
+
 function renderGraph(nodesData: any[], edgesData: any[]): void {
   const container = document.getElementById("network")!;
 
-  nodesData.forEach((node) => {
+nodesData.forEach((node) => {
+  if (!node.color) {
     node.color = {
-      background: "#ffffff",   // valge sisu
-      border: "#007bff",       // sinine äär
+      background: "#ffffff",
+      border: "#007bff",
       highlight: {
-        background: "#e0f0ff", // hover
+        background: "#e0f0ff",
         border: "#0056b3"
       }
     };
     node.borderWidth = 1;
-  });
+  }
+});
 
   edgesData.forEach((edge) => {
     if (!edge.color) {
@@ -327,11 +350,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   form.onsubmit = (e) => {
     e.preventDefault();
-    const normalizedSkill = normalizeSkill(input.value);
-    drawGraph(normalizedSkill);
+    const term = input.value.trim();
+    if (!term) return;
+
+    // kui graaf juba olemas, filtreeri
+    if (nodes && edges) {
+      filterGraphBySearch(term);
+    } else {
+      // kui graaf veel puudu, lae kogu graaf ja siis filtreeri
+      drawGraph("").then(() => {
+        filterGraphBySearch(term);
+      });
+    }
   };
 
-  drawGraph(normalizeSkill(input.value));
+  // laadime alguses kogu graafi
+  drawGraph("");
 });
 
 function normalizeSkill(text: string): string {

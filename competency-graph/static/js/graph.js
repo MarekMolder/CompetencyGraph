@@ -59,18 +59,37 @@ function drawGraph(skill) {
         }
     });
 }
+function filterGraphBySearch(term) {
+    const lower = term.toLowerCase();
+    const visibleNodes = new Set();
+    nodes.get().forEach((n) => {
+        if (n.label.toLowerCase().includes(lower)) {
+            visibleNodes.add(n.id);
+        }
+    });
+    // Näita ainult neid noded ja nende otseseid seoseid
+    nodes.get().forEach((n) => {
+        nodes.update({ id: n.id, hidden: !visibleNodes.has(n.id) });
+    });
+    edges.get().forEach((e) => {
+        const isVisible = visibleNodes.has(e.from) || visibleNodes.has(e.to);
+        edges.update({ id: e.id, hidden: !isVisible });
+    });
+}
 function renderGraph(nodesData, edgesData) {
     const container = document.getElementById("network");
     nodesData.forEach((node) => {
-        node.color = {
-            background: "#ffffff", // valge sisu
-            border: "#007bff", // sinine äär
-            highlight: {
-                background: "#e0f0ff", // hover
-                border: "#0056b3"
-            }
-        };
-        node.borderWidth = 1;
+        if (!node.color) {
+            node.color = {
+                background: "#ffffff",
+                border: "#007bff",
+                highlight: {
+                    background: "#e0f0ff",
+                    border: "#0056b3"
+                }
+            };
+            node.borderWidth = 1;
+        }
     });
     edgesData.forEach((edge) => {
         if (!edge.color) {
@@ -306,10 +325,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById("skillInput");
     form.onsubmit = (e) => {
         e.preventDefault();
-        const normalizedSkill = normalizeSkill(input.value);
-        drawGraph(normalizedSkill);
+        const term = input.value.trim();
+        if (!term)
+            return;
+        // kui graaf juba olemas, filtreeri
+        if (nodes && edges) {
+            filterGraphBySearch(term);
+        }
+        else {
+            // kui graaf veel puudu, lae kogu graaf ja siis filtreeri
+            drawGraph("").then(() => {
+                filterGraphBySearch(term);
+            });
+        }
     };
-    drawGraph(normalizeSkill(input.value));
+    // laadime alguses kogu graafi
+    drawGraph("");
 });
 function normalizeSkill(text) {
     const trimmed = text.trim();

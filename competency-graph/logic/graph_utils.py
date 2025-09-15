@@ -27,6 +27,9 @@ SCHEMA = Namespace("https://schema.org/")
 BASE_RDF = "https://oppekava.edu.ee/a/Special:ExportRDF/"
 DISPLAY_URL = "https://oppekava.edu.ee/a/"
 SKILLS_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Oskus"
+COMPETENCIES_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Kompetents"
+TEGEVUSNAITAJAD_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Tegevusnaitaja"
+KNOBITID_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Knobit"
 
 ESCO_LINK = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aesco_link")
 ESCO_VASTE = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aesco_vaste")
@@ -36,7 +39,11 @@ VERB = URIRef("https://schema.edu.ee/verb")
 OSAOSKUS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AosaOskus")
 SEOTUD_OSKUS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AeeldusOskus")
 SEOTUD = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aseotud")
-EELDAB = URIRef("http://oppekava.edu.ee/a/Property:Haridus:eeldab")
+
+KOMP_SISALDAB_TN = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKompSisaldabTn")
+TN_SISALDAB_KNOBITIT = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnSisaldabKnobitit")
+TN_EELDAB = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnEeldab")
+KNOBITI_LIIK = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AKnobitiLiik")
 
 # =========================
 #   CONFIGURATION FLAGS
@@ -91,30 +98,39 @@ def uri_to_skill_name(uri: str) -> str:
 def uri_to_label(uri: str) -> str:
     return unquote(uri.split("/")[-1].replace("_", " "))
 
-def _skill_key(skill_name: str) -> str:
-    return skill_name.strip()
+def normalize_key(s: str) -> str:
+    s = unquote(s)              # dekodeeri %20 → " "
+    s = s.strip()
+    s = s.replace(" ", "_")
+    s = re.sub(r"_+", "_", s)   # mitu "_" järjest → üks
+    s = re.sub(r"\(\d+\)$", "", s)  # eemalda lõpus (1), (2) jne
+    return s
 
+def _skill_key(skill_name: str) -> str:
+    return normalize_key(skill_name)
 # =========================
 #       SCRAPER
 # =========================
-def get_all_skills(category_url: str):
+def get_all_data(category_url: str):
     """
-    Loeb kategoorialehelt oskuste ID-d (URL-i viimased osad).
+    Loeb kategoorialehelt data ID-d (URL-i viimased osad).
     """
-    skills = set()
+    datas = set()
     try:
         response = requests.get(category_url, timeout=20)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "html.parser")
-        for link in soup.select("ul li a"):
-            href = link.get("href")
-            if href and href.startswith("/a/") and ":" not in href:
-                skill = href.split("/a/")[-1]
-                skills.add(skill)
-        print(f"Found {len(skills)} skills")
+
+        # Leia kõik lingid, mis viitavad /a/ ja EI sisalda kategooria või erileht prefiksit
+        for link in soup.find_all("a", href=True):
+            href = link["href"]
+            if href.startswith("/a/") and not href.startswith("/a/Kategooria") and not href.startswith("/a/Eri:"):
+                datas.add(href.split("/a/")[-1])
+
+        print(f"Found {len(datas)} data from {category_url}")
     except Exception as e:
-        print(f"Error retrieving skills: {e}")
-    return list(skills)
+        print(f"Error retrieving data from {category_url}: {e}")
+    return [normalize_key(d) for d in datas]
 
 # =========================
 #    ASYNC RDF LOADING
@@ -188,34 +204,37 @@ async def _process_one(session: aiohttp.ClientSession, skill_name: str, depth: i
         subject_uri, description = _extract_subject_and_description(g_rdf, skill_name)
 
         label = uri_to_label(skill_name)
-        depths[label] = min(depth, depths.get(label, depth))
+        key = normalize_key(skill_name)
+        depths[key] = min(depth, depths.get(key, depth))
 
-        node = data.get(label)
+        node = data.get(key)
         if not node:
-            node = data[label] = {
+            node = data[key] = {
+                "label": label,
                 "uri": subject_uri,
                 "description": description,
                 "link": DISPLAY_URL + skill_name,
                 "subskills": [],
                 "prerequisites": [],
-                "competency": [],
+                "competencies": [],
+                "tegevusnaitajad": [],
+                "knobitid": [],
                 "esco_link": str(g_rdf.value(subject_uri, ESCO_LINK, default="")),
                 "esco_vaste": str(g_rdf.value(subject_uri, ESCO_VASTE, default="")),
                 "osk_reg_kood": str(g_rdf.value(subject_uri, OSK_REG_KOOD, default="")),
                 "skill_verb": str(g_rdf.value(subject_uri, VERB, default="")),
             }
 
-        # 1) alla: osaoskused
+        # 1) subskills
         for o in g_rdf.objects(subject=subject_uri, predicate=OSAOSKUS):
             sub_uri = str(o)
             sub_name = uri_to_skill_name(sub_uri)
-            sub_label = uri_to_label(sub_uri)
-            if sub_label not in node["subskills"]:
-                node["subskills"].append(sub_label)
-            key = _skill_key(sub_name)
+            sub_key = _skill_key(sub_name)
+            if sub_key not in node["subskills"]:
+                node["subskills"].append(sub_key)
             if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if key not in visited:
-                    visited.add(key)
+                if sub_key not in visited:
+                    visited.add(sub_key)
                     await q.put((sub_name, depth + 1))
 
         # 2) üles: koosneja
@@ -231,13 +250,12 @@ async def _process_one(session: aiohttp.ClientSession, skill_name: str, depth: i
         for o in g_rdf.objects(subject=subject_uri, predicate=SEOTUD_OSKUS):
             pre_uri = str(o)
             pre_name = uri_to_skill_name(pre_uri)
-            pre_label = uri_to_label(pre_uri)
-            if pre_label not in node["prerequisites"]:
-                node["prerequisites"].append(pre_label)
-            key = _skill_key(pre_name)
+            pre_key = _skill_key(pre_name)
+            if pre_key not in node["prerequisites"]:
+                node["prerequisites"].append(pre_key)
             if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if key not in visited:
-                    visited.add(key)
+                if pre_key not in visited:
+                    visited.add(pre_key)
                     await q.put((pre_name, depth + 1))
 
         # 4) üles: eeldusOskus
@@ -249,32 +267,45 @@ async def _process_one(session: aiohttp.ClientSession, skill_name: str, depth: i
                     visited.add(key)
                     await q.put((parent_name, depth + 1))
 
-        # 5) seotud / õpiväljund (EDU.eeldab)
-        for o in g_rdf.objects(subject=subject_uri, predicate=EDU.eeldab):
-            rel_uri = str(o)
-            rel_name = uri_to_skill_name(rel_uri)
-            rel_label = uri_to_label(rel_uri)
-            if rel_label not in node["competency"]:
-                node["competency"].append(rel_label)
-            key = _skill_key(rel_name)
+        # 5) alla: kompetents sisaldab tegevusnäitajaid
+        for o in g_rdf.objects(subject=subject_uri, predicate=KOMP_SISALDAB_TN):
+            tn_uri = str(o)
+            tn_name = uri_to_skill_name(tn_uri)
+            tn_key = _skill_key(tn_name)
+            if tn_key not in node["tegevusnaitajad"]:
+                node["tegevusnaitajad"].append(tn_key)
             if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if key not in visited:
-                    visited.add(key)
-                    await q.put((rel_name, depth + 1))
+                if tn_key not in visited:
+                    visited.add(tn_key)
+                    await q.put((tn_name, depth + 1))
 
-        # 6) üles: EDU.eeldab
-        for s in g_rdf.subjects(predicate=EDU.eeldab, object=subject_uri):
-            parent_name = uri_to_skill_name(str(s))
-            key = _skill_key(parent_name)
+        # 6) alla: Tegevusnäitaja sisaldab knobiteid
+        for o in g_rdf.objects(subject=subject_uri, predicate=TN_SISALDAB_KNOBITIT):
+            kn_uri = str(o)
+            kn_name = uri_to_skill_name(kn_uri)
+            kn_key = _skill_key(kn_name)
+            if kn_key not in node["knobitid"]:
+                node["knobitid"].append(kn_key)
             if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if key not in visited:
-                    visited.add(key)
-                    await q.put((parent_name, depth + 1))
+                if kn_key not in visited:
+                    visited.add(kn_key)
+                    await q.put((kn_name, depth + 1))
+
+        for o in g_rdf.objects(subject=subject_uri, predicate=TN_EELDAB):
+            tn_req_uri = str(o)
+            tn_req_name = uri_to_skill_name(tn_req_uri)
+            tn_req_key = _skill_key(tn_req_name)
+            if tn_req_key not in node.setdefault("tn_eeldab", []):
+                node["tn_eeldab"].append(tn_req_key)
+            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
+                if tn_req_key not in visited:
+                    visited.add(tn_req_key)
+                    await q.put((tn_req_name, depth + 1))
 
     except Exception as e:
         print(f"[warn] {skill_name}: {e}")
 
-async def parse_all_skills_async(skill_list):
+async def parse_all_data_async(data_list):
     """
     Asünkroonne 'kogu graafi' kraapimine paralleelselt, külastatud-set kaitsega.
     NB! Kui sisend on väga suur, on see siiski raske; aga kordades kiirem kui sünkroonne.
@@ -284,7 +315,7 @@ async def parse_all_skills_async(skill_list):
     q: asyncio.Queue = asyncio.Queue()
 
     # esmane seeme
-    for s in skill_list:
+    for s in data_list:
         key = _skill_key(s)
         if key not in visited:
             visited.add(key)
@@ -306,7 +337,7 @@ async def parse_all_skills_async(skill_list):
             w.cancel()
         await asyncio.gather(*workers, return_exceptions=True)
 
-    sample = list(data.keys())[:10]
+    sample = list(data.keys())
     print(f"✅ Andmestikus olevad oskused: {sample}")
     if "Probleemilahendus" not in data:
         print("❌ Probleemilahendus puudub data-s!")
@@ -357,22 +388,23 @@ def _set_network_options(net):
     """)
 
 def _add_nodes(net, data, depths):
-    for label, info in data.items():
-        level = depths.get(label, 0)
+    for key, info in data.items():
+        label = info["label"]
+        level = depths.get(key, 0)
         size = 10 + len(info.get("subskills", [])) * 1.5
 
         # Parandatud värviloogika: kasutame reaalseid võtmeid (prerequisites/competency/subskills)
         if info.get("prerequisites"):
             color = "#a1c9f1"   # hele sinine – eeldused
-        elif info.get("competency"):
-            color = "#58a55c"   # rohekas – seotud/õpiväljund
         elif info.get("subskills"):
             color = "#bf98e6"   # lilla – osaoskus
+        elif info.get("tegevusnaitajad"):
+            color = "#27ae60"
         else:
             color = "#b7e1cd"   # vaikimisi
 
         net.add_node(
-            label,
+            key,
             label=label,
             title=f"Skill: {label}\nDescription: {info.get('description','')}\nClick me!",
             shape="dot",
@@ -384,18 +416,20 @@ def _add_nodes(net, data, depths):
 
 def _add_edges(net, data):
     added_edges = set()
-    for label, info in data.items():
+    for node_id, info in data.items():
         edge_types = [
-            ("subskills", "#2b7bba"),     # blue
-            ("prerequisites", "#2980b9"), # dark blue
-            ("competency", "#58a55c"),    # green
+            ("subskills", "#e74c3c"),
+            ("prerequisites", "#2980b9"),
+            ("tegevusnaitajad", "#27ae60"),
+            ("knobitid", "#9b59b6"),
+            ("tn_eeldab", "#2980b9"),
         ]
         for key, color in edge_types:
             for target in info.get(key, []):
                 if target in data:
-                    edge = (target, label, color)
+                    edge = (target, node_id, color)
                     if edge not in added_edges:
-                        net.add_edge(source=target, to=label, color=color)
+                        net.add_edge(source=target, to=node_id, color=color)
                         added_edges.add(edge)
 
 def _inject_html_controls(filename, depths):
@@ -463,13 +497,18 @@ def export_graphml(data, filename="skills_graph.graphml"):
 #        MAIN
 # =========================
 if __name__ == "__main__":
-    skills = get_all_skills(SKILLS_URL)
+    skills = get_all_data(SKILLS_URL)
+    competencies = get_all_data(COMPETENCIES_URL)
+    tegevusnaitajad = get_all_data(TEGEVUSNAITAJAD_URL)
+    knobitid = get_all_data(KNOBITID_URL)
+
+    seed = skills + competencies + tegevusnaitajad + knobitid
 
     # UUS: asünkroonne täisgraafi laadimine (paralleel + cache)
-    parsed_data, depths = asyncio.run(parse_all_skills_async(skills))
+    parsed_data, depths = asyncio.run(parse_all_data_async(seed))
 
     build_interactive_graph(parsed_data, depths)
     if EXPORT_GRAPHML:
         export_graphml(parsed_data)
 
-parse_all_skills_recursive = parse_all_skills_async
+parse_all_skills_recursive = parse_all_data_async
