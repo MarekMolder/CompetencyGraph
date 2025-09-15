@@ -4,3 +4,6 @@ networkx
 pyvis
 rdflib
 requests
+aiohttp
+diskcache
+aiolimiter

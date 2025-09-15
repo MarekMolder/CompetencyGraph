@@ -1,8 +1,8 @@
 from flask import Flask
 from pathlib import Path
 
-from routes.job_routes import jobs_bp
-from routes.graph_routes import main_bp
+from app.routes.job_routes import jobs_bp
+from app.routes.graph_routes import main_bp
 
 def create_app():
     """
