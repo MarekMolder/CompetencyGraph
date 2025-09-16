@@ -3,6 +3,7 @@
     "@types/bootstrap": "^5.2.10"
   },
   "dependencies": {
-    "@popperjs/core": "^2.11.8"
+    "@popperjs/core": "^2.11.8",
+    "typescript": "^5.9.2"
   }
 }

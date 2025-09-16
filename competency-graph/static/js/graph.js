@@ -61,20 +61,43 @@ function drawGraph(skill) {
 }
 function filterGraphBySearch(term) {
     const lower = term.toLowerCase();
-    const visibleNodes = new Set();
+    let matchedNode = null;
+    // Leia esimene sobiv node
     nodes.get().forEach((n) => {
-        if (n.label.toLowerCase().includes(lower)) {
-            visibleNodes.add(n.id);
+        if (!matchedNode && n.label.toLowerCase().includes(lower)) {
+            matchedNode = n;
         }
     });
-    // Näita ainult neid noded ja nende otseseid seoseid
+    if (!matchedNode) {
+        alert("Ei leitud");
+        return;
+    }
+    const visibleNodes = new Set([matchedNode.id]);
+    const visibleEdges = new Set();
+    // Leia kõik servad, mis lähevad sisse või välja
+    edges.get().forEach((e) => {
+        if (e.from === matchedNode.id || e.to === matchedNode.id) {
+            visibleEdges.add(e.id);
+            visibleNodes.add(e.from);
+            visibleNodes.add(e.to);
+        }
+    });
+    // Näita ainult neid node’e
     nodes.get().forEach((n) => {
         nodes.update({ id: n.id, hidden: !visibleNodes.has(n.id) });
     });
+    // Näita ainult neid edge’sid
     edges.get().forEach((e) => {
-        const isVisible = visibleNodes.has(e.from) || visibleNodes.has(e.to);
-        edges.update({ id: e.id, hidden: !isVisible });
+        edges.update({ id: e.id, hidden: !visibleEdges.has(e.id) });
     });
+    // Fookus selle node peale
+    network.focus(matchedNode.id, {
+        scale: 1.2,
+        animation: { duration: 800, easingFunction: "easeInOutQuad" }
+    });
+    // Tee see aktiivseks (nagu klikiga)
+    lastClickedNode = matchedNode;
+    updateNodeInfo(matchedNode);
 }
 function renderGraph(nodesData, edgesData) {
     const container = document.getElementById("network");
@@ -317,6 +340,11 @@ function formatExtraNodeInfo(node) {
     if (node.osk_reg_kood) {
         info.push(`<p><strong>Oskusregistri kood:</strong> <a href="https://oska.kutsekoda.ee/oskuste_register/oskused/${node.osk_reg_kood}" target="_blank">${node.osk_reg_kood}</a></p>`);
     }
+    ;
+    if (node.relevant_occupations && node.relevant_occupations.length > 0) {
+        const occLinks = node.relevant_occupations.map((o) => `<a href="${o.uri}" target="_blank">${o.label}</a>`).join(", ");
+        info.push(`<p><strong>Seotud ametid:</strong> ${occLinks}</p>`);
+    }
     return info.join("");
 }
 // Init
@@ -347,4 +375,38 @@ function normalizeSkill(text) {
     if (!trimmed)
         return "";
     return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+}
+function applyTypeFilter() {
+    const showOskus = document.getElementById("filterOskus").checked;
+    const showKompetents = document.getElementById("filterKompetents").checked;
+    const showTn = document.getElementById("filterTn").checked;
+    const showKnobit = document.getElementById("filterKnobit").checked;
+    const showMuu = document.getElementById("filterMuu").checked;
+    nodes.get().forEach((n) => {
+        let visible = true;
+        switch (n.type) {
+            case "oskus":
+                visible = showOskus;
+                break;
+            case "kompetents":
+                visible = showKompetents;
+                break;
+            case "tegevusnaitaja":
+                visible = showTn;
+                break;
+            case "knobit":
+                visible = showKnobit;
+                break;
+            case "muu":
+                visible = showMuu;
+                break;
+        }
+        nodes.update({ id: n.id, hidden: !visible });
+    });
+    // Peida ka servad kui mõlemad otsad on peidetud
+    edges.get().forEach((e) => {
+        const fromVisible = !nodes.get(e.from).hidden;
+        const toVisible = !nodes.get(e.to).hidden;
+        edges.update({ id: e.id, hidden: !(fromVisible && toVisible) });
+    });
 }

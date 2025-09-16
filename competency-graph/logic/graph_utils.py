@@ -35,6 +35,8 @@ ESCO_LINK = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHari
 ESCO_VASTE = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aesco_vaste")
 OSK_REG_KOOD = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aosk_reg_kood")
 VERB = URIRef("https://schema.edu.ee/verb")
+RELEVANT_OCCUPATION = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3ASchema-3ArelevantOccupation")
+
 
 OSAOSKUS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AosaOskus")
 SEOTUD_OSKUS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AeeldusOskus")
@@ -207,6 +209,15 @@ async def _process_one(session: aiohttp.ClientSession, skill_name: str, depth: i
         key = normalize_key(skill_name)
         depths[key] = min(depth, depths.get(key, depth))
 
+        relevant_occupations = []
+        for occ in g_rdf.objects(subject=subject_uri, predicate=RELEVANT_OCCUPATION):
+            occ_uri = str(occ)
+            occ_label = str(g_rdf.value(occ, RDFS.label, default=uri_to_label(occ_uri)))
+            relevant_occupations.append({
+                "uri": occ_uri,
+                "label": occ_label
+            })
+
         node = data.get(key)
         if not node:
             node = data[key] = {
@@ -223,6 +234,7 @@ async def _process_one(session: aiohttp.ClientSession, skill_name: str, depth: i
                 "esco_vaste": str(g_rdf.value(subject_uri, ESCO_VASTE, default="")),
                 "osk_reg_kood": str(g_rdf.value(subject_uri, OSK_REG_KOOD, default="")),
                 "skill_verb": str(g_rdf.value(subject_uri, VERB, default="")),
+                "relevant_occupations": relevant_occupations,
             }
 
         # 1) subskills

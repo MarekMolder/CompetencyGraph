@@ -57,18 +57,23 @@ def get_graph_data():
             if key in competencies_set:
                 node_label = f"Kompetents: {label}"
                 color = "#FFA500"  # oranž
+                node_type = "kompetents"
             elif key in tn_set:
                 node_label = f"Tegevusnäitaja: {label}"
                 color = "#27ae60"  # roheline
+                node_type = "tegevusnaitaja"
             elif key in knobit_set:
                 node_label = f"Knobit: {label}"
                 color = "#9b59b6"  # lilla
+                node_type = "knobit"
             elif key in skills_set:
                 node_label = f"Oskus: {label}"
                 color = "#a1c9f1"  # sinine
+                node_type = "oskus"
             else:
                 node_label = f"Tundmatu: {label}"
                 color = "#7f8c8d"  # hall
+                node_type = "muu"
 
             nodes.append({
                 "id": key,
@@ -81,7 +86,9 @@ def get_graph_data():
                 "esco_vaste": info.get("esco_vaste", ""),
                 "osk_reg_kood": info.get("osk_reg_kood", ""),
                 "skill_verb": info.get("skill_verb", ""),
-                "color": color
+                "color": color,
+                "relevant_occupations": info.get("relevant_occupations", []),
+                "type": node_type,
             })
 
             # Edges (NB! targetid normaliseeri sama moodi nagu key)
