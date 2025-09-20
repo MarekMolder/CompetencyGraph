@@ -72,56 +72,37 @@ function filterGraphBySearch(term: string): void {
     return;
   }
 
-  const visibleNodes = new Set<string>([matchedNode.id]);
-  const visibleEdges = new Set<string>();
+  lastClickedNode = matchedNode;
 
-  // Leia kõik servad, mis lähevad sisse või välja
-  edges.get().forEach((e: any) => {
-    if (e.from === matchedNode.id || e.to === matchedNode.id) {
-      visibleEdges.add(e.id);
-      visibleNodes.add(e.from);
-      visibleNodes.add(e.to);
-    }
-  });
-
-  // Näita ainult neid node’e
-  nodes.get().forEach((n: any) => {
-    nodes.update({ id: n.id, hidden: !visibleNodes.has(n.id) });
-  });
-
-  // Näita ainult neid edge’sid
-  edges.get().forEach((e: any) => {
-    edges.update({ id: e.id, hidden: !visibleEdges.has(e.id) });
-  });
-
-  // Fookus selle node peale
+  // Tõsta fookus
   network.focus(matchedNode.id, {
     scale: 1.2,
     animation: { duration: 800, easingFunction: "easeInOutQuad" }
   });
 
-  // Tee see aktiivseks (nagu klikiga)
-  lastClickedNode = matchedNode;
   updateNodeInfo(matchedNode);
+
+  // RAKENDA sügavuse filter, et näidata õige hulk node’e + kaared
+  applyLevelFilter();
 }
 
 
 function renderGraph(nodesData: any[], edgesData: any[]): void {
   const container = document.getElementById("network")!;
 
-nodesData.forEach((node) => {
-  if (!node.color) {
-    node.color = {
-      background: "#ffffff",
-      border: "#007bff",
-      highlight: {
-        background: "#e0f0ff",
-        border: "#0056b3"
+    nodesData.forEach((node) => {
+      if (!node.color) {
+        node.color = {
+          background: "#ffffff",
+          border: "#007bff",
+          highlight: {
+            background: "#e0f0ff",
+            border: "#0056b3"
+          }
+        };
+        node.borderWidth = 1;
       }
-    };
-    node.borderWidth = 1;
-  }
-});
+    });
 
   edgesData.forEach((edge) => {
     if (!edge.color) {
@@ -135,6 +116,11 @@ nodesData.forEach((node) => {
   const data = { nodes, edges };
   const options = getGraphOptions();
   network = new vis.Network(container, data, options);
+
+  const dropdown = document.getElementById("searchDropdown") as HTMLElement;
+  dropdown.innerHTML = nodes.get().slice(0, 200).map((n: any) =>
+    `<li><a class="dropdown-item" href="#" data-id="${n.id}">${n.label}</a></li>`
+  ).join("");
 
   network.on("click", (params: any) => {
     if (isJobCreationMode) {
@@ -211,6 +197,7 @@ nodesData.forEach((node) => {
     const node = nodes.get(params.node);
     updateNodeInfo(node);
   });
+
 }
 
 function applyLevelFilter(): void {
@@ -300,6 +287,30 @@ function applyEdgeFilter(): void {
   }
 }
 
+function applyEdgeTypeFilter(): void {
+  const showEeldab = (document.getElementById("filterEdgeEeldab") as HTMLInputElement).checked;
+  const showKoosneb = (document.getElementById("filterEdgeKoosneb") as HTMLInputElement).checked;
+  const showSisaldabTn = (document.getElementById("filterEdgeSisaldabTn") as HTMLInputElement).checked;
+  const showSisaldabKnobitit = (document.getElementById("filterEdgeSisaldabKnobitit") as HTMLInputElement).checked;
+  const showTnEeldab = (document.getElementById("filterEdgeTnEeldab") as HTMLInputElement).checked;
+
+  edges.get().forEach((e: any) => {
+    let visible = true;
+    switch (e.label) {
+      case "eeldab": visible = showEeldab; break;
+      case "koosneb": visible = showKoosneb; break;
+      case "sisaldab Tn": visible = showSisaldabTn; break;
+      case "sisaldab knobitit": visible = showSisaldabKnobitit; break;
+      case "Tn eeldab": visible = showTnEeldab; break;
+    }
+
+    // Ära näita serva, kui tema node’id on juba peidetud
+    const fromVisible = !nodes.get(e.from).hidden;
+    const toVisible = !nodes.get(e.to).hidden;
+    edges.update({ id: e.id, hidden: !(visible && fromVisible && toVisible) });
+  });
+}
+
 function showError(message: string): void {
   const container = document.getElementById("network")!;
   container.innerHTML = "";
@@ -382,25 +393,59 @@ function formatExtraNodeInfo(node: any): string {
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("searchForm") as HTMLFormElement;
   const input = document.getElementById("skillInput") as HTMLInputElement;
+  const dropdown = document.getElementById("searchDropdown") as HTMLElement;
 
-  form.onsubmit = (e) => {
-    e.preventDefault();
-    const term = input.value.trim();
-    if (!term) return;
+form.onsubmit = (e) => {
+  e.preventDefault();
+  const term = input.value.trim();
+  if (!term) {
+    // kui tühi otsing → näita kõike
+    nodes.get().forEach((n: any) => nodes.update({ id: n.id, hidden: false }));
+    edges.get().forEach((e: any) => edges.update({ id: e.id, hidden: false }));
+    lastClickedNode = null;
+    return;
+  }
 
-    // kui graaf juba olemas, filtreeri
-    if (nodes && edges) {
-      filterGraphBySearch(term);
-    } else {
-      // kui graaf veel puudu, lae kogu graaf ja siis filtreeri
-      drawGraph("").then(() => {
-        filterGraphBySearch(term);
-      });
+  if (nodes && edges) {
+    filterGraphBySearch(term);
+  } else {
+    drawGraph("").then(() => filterGraphBySearch(term));
+  }
+};
+
+  input.addEventListener("input", () => {
+    if (!nodes) return;
+    const term = input.value.toLowerCase();
+    if (!term) {
+      dropdown.innerHTML = "";
+      dropdown.classList.remove("show");
+      return;
     }
-  };
 
-  // laadime alguses kogu graafi
-  drawGraph("");
+    const matches = nodes.get()
+      .filter((n: any) => n.label.toLowerCase().includes(term))
+      .slice(0, 30);
+
+    dropdown.innerHTML = matches.map((n: any) =>
+      `<li><a class="dropdown-item" href="javascript:void(0)" data-id="${n.id}">${n.label}</a></li>`
+    ).join("");
+
+    if (matches.length > 0) dropdown.classList.add("show");
+    else dropdown.classList.remove("show");
+  });
+
+  dropdown.addEventListener("click", (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === "A") {
+      e.preventDefault();
+      const label = target.textContent || "";
+      input.value = label;
+      dropdown.classList.remove("show");
+      filterGraphBySearch(label);
+    }
+  });
+
+  drawGraph(""); // lae alguses
 });
 
 function normalizeSkill(text: string): string {

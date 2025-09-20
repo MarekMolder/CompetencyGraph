@@ -78,6 +78,10 @@ DOUBLE_TAG_RE = re.compile(
     re.IGNORECASE
 )
 
+SMW_HEX_RE = re.compile(r'-(?P<h>[0-9A-Fa-f]{2})')
+def decode_smw_hex(s: str) -> str:
+    return SMW_HEX_RE.sub(lambda m: chr(int(m.group('h'), 16)), s)
+
 def _fix_decimal_commas(xml_bytes: bytes) -> bytes:
     """
     Asendab xsd:double elementide TEXT-is koma punktiga.
@@ -95,17 +99,26 @@ def _fix_decimal_commas(xml_bytes: bytes) -> bytes:
     return DOUBLE_TAG_RE.sub(_repl, xml_bytes)
 
 def uri_to_skill_name(uri: str) -> str:
-    return unquote(uri.split("/")[-1])
+    # võta viimane fragment, URL-dekooderi järel dekodeeri ka SMW heksid
+    frag = unquote(uri.split("/")[-1])
+    frag = decode_smw_hex(frag)
+    return frag
 
 def uri_to_label(uri: str) -> str:
-    return unquote(uri.split("/")[-1].replace("_", " "))
+    # inimloetav silt: dekodeeri ja muuda "_" -> " "
+    frag = unquote(uri.split("/")[-1])
+    frag = decode_smw_hex(frag)
+    return frag.replace("_", " ")
 
 def normalize_key(s: str) -> str:
-    s = unquote(s)              # dekodeeri %20 → " "
+    # KANOONILINE KEY: alati sama, sõltumata sellest,
+    # kas lähtekujuks oli koma või "-2C"
+    s = unquote(s)
+    s = decode_smw_hex(s)
     s = s.strip()
     s = s.replace(" ", "_")
-    s = re.sub(r"_+", "_", s)   # mitu "_" järjest → üks
-    s = re.sub(r"\(\d+\)$", "", s)  # eemalda lõpus (1), (2) jne
+    s = re.sub(r"_+", "_", s)
+    s = re.sub(r"\(\d+\)$", "", s)
     return s
 
 def _skill_key(skill_name: str) -> str:

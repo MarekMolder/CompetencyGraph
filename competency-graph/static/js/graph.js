@@ -72,32 +72,15 @@ function filterGraphBySearch(term) {
         alert("Ei leitud");
         return;
     }
-    const visibleNodes = new Set([matchedNode.id]);
-    const visibleEdges = new Set();
-    // Leia kõik servad, mis lähevad sisse või välja
-    edges.get().forEach((e) => {
-        if (e.from === matchedNode.id || e.to === matchedNode.id) {
-            visibleEdges.add(e.id);
-            visibleNodes.add(e.from);
-            visibleNodes.add(e.to);
-        }
-    });
-    // Näita ainult neid node’e
-    nodes.get().forEach((n) => {
-        nodes.update({ id: n.id, hidden: !visibleNodes.has(n.id) });
-    });
-    // Näita ainult neid edge’sid
-    edges.get().forEach((e) => {
-        edges.update({ id: e.id, hidden: !visibleEdges.has(e.id) });
-    });
-    // Fookus selle node peale
+    lastClickedNode = matchedNode;
+    // Tõsta fookus
     network.focus(matchedNode.id, {
         scale: 1.2,
         animation: { duration: 800, easingFunction: "easeInOutQuad" }
     });
-    // Tee see aktiivseks (nagu klikiga)
-    lastClickedNode = matchedNode;
     updateNodeInfo(matchedNode);
+    // RAKENDA sügavuse filter, et näidata õige hulk node’e + kaared
+    applyLevelFilter();
 }
 function renderGraph(nodesData, edgesData) {
     const container = document.getElementById("network");
@@ -124,6 +107,8 @@ function renderGraph(nodesData, edgesData) {
     const data = { nodes, edges };
     const options = getGraphOptions();
     network = new vis.Network(container, data, options);
+    const dropdown = document.getElementById("searchDropdown");
+    dropdown.innerHTML = nodes.get().slice(0, 200).map((n) => `<li><a class="dropdown-item" href="#" data-id="${n.id}">${n.label}</a></li>`).join("");
     network.on("click", (params) => {
         if (isJobCreationMode) {
             if (params.nodes.length > 0) {
@@ -273,6 +258,37 @@ function applyEdgeFilter() {
         });
     }
 }
+function applyEdgeTypeFilter() {
+    const showEeldab = document.getElementById("filterEdgeEeldab").checked;
+    const showKoosneb = document.getElementById("filterEdgeKoosneb").checked;
+    const showSisaldabTn = document.getElementById("filterEdgeSisaldabTn").checked;
+    const showSisaldabKnobitit = document.getElementById("filterEdgeSisaldabKnobitit").checked;
+    const showTnEeldab = document.getElementById("filterEdgeTnEeldab").checked;
+    edges.get().forEach((e) => {
+        let visible = true;
+        switch (e.label) {
+            case "eeldab":
+                visible = showEeldab;
+                break;
+            case "koosneb":
+                visible = showKoosneb;
+                break;
+            case "sisaldab Tn":
+                visible = showSisaldabTn;
+                break;
+            case "sisaldab knobitit":
+                visible = showSisaldabKnobitit;
+                break;
+            case "Tn eeldab":
+                visible = showTnEeldab;
+                break;
+        }
+        // Ära näita serva, kui tema node’id on juba peidetud
+        const fromVisible = !nodes.get(e.from).hidden;
+        const toVisible = !nodes.get(e.to).hidden;
+        edges.update({ id: e.id, hidden: !(visible && fromVisible && toVisible) });
+    });
+}
 function showError(message) {
     const container = document.getElementById("network");
     container.innerHTML = "";
@@ -351,24 +367,53 @@ function formatExtraNodeInfo(node) {
 document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("searchForm");
     const input = document.getElementById("skillInput");
+    const dropdown = document.getElementById("searchDropdown");
     form.onsubmit = (e) => {
         e.preventDefault();
         const term = input.value.trim();
-        if (!term)
+        if (!term) {
+            // kui tühi otsing → näita kõike
+            nodes.get().forEach((n) => nodes.update({ id: n.id, hidden: false }));
+            edges.get().forEach((e) => edges.update({ id: e.id, hidden: false }));
+            lastClickedNode = null;
             return;
-        // kui graaf juba olemas, filtreeri
+        }
         if (nodes && edges) {
             filterGraphBySearch(term);
         }
         else {
-            // kui graaf veel puudu, lae kogu graaf ja siis filtreeri
-            drawGraph("").then(() => {
-                filterGraphBySearch(term);
-            });
+            drawGraph("").then(() => filterGraphBySearch(term));
         }
     };
-    // laadime alguses kogu graafi
-    drawGraph("");
+    input.addEventListener("input", () => {
+        if (!nodes)
+            return;
+        const term = input.value.toLowerCase();
+        if (!term) {
+            dropdown.innerHTML = "";
+            dropdown.classList.remove("show");
+            return;
+        }
+        const matches = nodes.get()
+            .filter((n) => n.label.toLowerCase().includes(term))
+            .slice(0, 30);
+        dropdown.innerHTML = matches.map((n) => `<li><a class="dropdown-item" href="javascript:void(0)" data-id="${n.id}">${n.label}</a></li>`).join("");
+        if (matches.length > 0)
+            dropdown.classList.add("show");
+        else
+            dropdown.classList.remove("show");
+    });
+    dropdown.addEventListener("click", (e) => {
+        const target = e.target;
+        if (target.tagName === "A") {
+            e.preventDefault();
+            const label = target.textContent || "";
+            input.value = label;
+            dropdown.classList.remove("show");
+            filterGraphBySearch(label);
+        }
+    });
+    drawGraph(""); // lae alguses
 });
 function normalizeSkill(text) {
     const trimmed = text.trim();
