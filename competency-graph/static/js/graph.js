@@ -175,8 +175,28 @@ function renderGraph(nodesData, edgesData) {
         }
     });
     network.on("hoverNode", (params) => {
-        const node = nodes.get(params.node);
-        updateNodeInfo(node);
+        if (!isPanelPinned) {
+            const node = nodes.get(params.node);
+            updateNodeInfo(node);
+        }
+    });
+    // Kui hiirega node’ilt ära lähed ja pole pinned → peida
+    network.on("blurNode", () => {
+        hideNodeInfo();
+    });
+    // Kui klõpsad node’i peale → paneel lukku
+    network.on("click", (params) => {
+        if (params.nodes.length > 0) {
+            const clickedNodeId = params.nodes[0];
+            const node = nodes.get(clickedNodeId);
+            updateNodeInfo(node);
+            isPanelPinned = true; // lukusta
+        }
+        else {
+            // Kui klõpsad tühjale → vabasta
+            isPanelPinned = false;
+            hideNodeInfo();
+        }
     });
 }
 function applyLevelFilter() {
@@ -298,7 +318,7 @@ function getGraphOptions() {
     return {
         nodes: {
             shape: "dot",
-            font: { size: 16, color: "#343434" },
+            font: { size: 16, color: "#5c5c5c" },
             borderWidth: 2
         },
         edges: {
@@ -308,14 +328,14 @@ function getGraphOptions() {
             smooth: { type: "dynamic" },
             font: {
                 align: "top",
-                size: 12,
-                color: "#333333",
+                size: 16,
+                color: "#5c5c5c",
                 strokeWidth: 0
             }
         },
         interaction: {
             hover: true,
-            navigationButtons: true,
+            navigationButtons: false,
             keyboard: true,
             zoomView: true
         },
@@ -331,7 +351,10 @@ function getGraphOptions() {
         }
     };
 }
+let isPanelPinned = false; // uus flag
 function updateNodeInfo(node) {
+    const panel = document.getElementById("skillInfo");
+    panel.classList.add("show");
     document.getElementById("infoTitle").textContent = node.label;
     document.getElementById("infoDescription").textContent = node.description || "Kirjeldus puudub";
     const link = document.getElementById("infoLink");
@@ -344,6 +367,11 @@ function updateNodeInfo(node) {
     }
     const extraInfo = formatExtraNodeInfo(node);
     document.getElementById("infoExtra").innerHTML = extraInfo;
+}
+function hideNodeInfo() {
+    if (!isPanelPinned) {
+        document.getElementById("skillInfo").classList.remove("show");
+    }
 }
 function formatExtraNodeInfo(node) {
     const info = [];

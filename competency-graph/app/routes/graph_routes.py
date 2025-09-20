@@ -56,23 +56,23 @@ def get_graph_data():
 
             if key in competencies_set:
                 node_label = f"Kompetents: {label}"
-                color = "#FFA500"  # oranž
+                color = "#f4a261"  # oranž
                 node_type = "kompetents"
             elif key in tn_set:
                 node_label = f"Tegevusnäitaja: {label}"
-                color = "#27ae60"  # roheline
+                color = "#2a9d8f"  # roheline
                 node_type = "tegevusnaitaja"
             elif key in knobit_set:
                 node_label = f"Knobit: {label}"
-                color = "#9b59b6"  # lilla
+                color = "#264653"  # lilla
                 node_type = "knobit"
             elif key in skills_set:
                 node_label = f"Oskus: {label}"
-                color = "#a1c9f1"  # sinine
+                color = "#457b9d"  # sinine
                 node_type = "oskus"
             else:
                 node_label = f"Tundmatu: {label}"
-                color = "#7f8c8d"  # hall
+                color = "#8d99ae"  # hall
                 node_type = "muu"
 
             nodes.append({
@@ -97,7 +97,7 @@ def get_graph_data():
                     edges.append({
                         "from": sub,
                         "to": key,
-                        "color": "#e74c3c",
+                        "color": "#e76f51",
                         "label": "koosneb",
                         "dashes": True,
                         "arrows": {"to": {"enabled": True, "type": "vee"}}
@@ -109,7 +109,7 @@ def get_graph_data():
                     edges.append({
                         "from": pre,
                         "to": key,
-                        "color": "#2980b9",
+                        "color": "#00b4d8",
                         "label": "eeldab"
                     })
 
@@ -119,7 +119,7 @@ def get_graph_data():
                     edges.append({
                         "from": tn,
                         "to": key,
-                        "color": "#27ae60",
+                        "color": "#2a9d8f",
                         "label": "sisaldab Tn"
                     })
 
@@ -129,7 +129,7 @@ def get_graph_data():
                     edges.append({
                         "from": kn,
                         "to": key,
-                        "color": "#9b59b6",
+                        "color": "#6a4c93",
                         "label": "sisaldab knobitit"
                     })
 
@@ -138,7 +138,7 @@ def get_graph_data():
                     edges.append({
                         "from": tn_req,
                         "to": key,
-                        "color": "#2980b9",
+                        "color": "#0077b6",
                         "label": "Tn eeldab"
                     })
 

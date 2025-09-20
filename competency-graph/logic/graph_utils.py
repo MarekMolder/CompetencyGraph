@@ -1,4 +1,8 @@
 import ssl
+
+from IPython.core.display import Math
+from pyvis import node
+
 ssl._create_default_https_context = ssl._create_unverified_context
 
 # --- Std lib / 3rd party ---
@@ -79,8 +83,15 @@ DOUBLE_TAG_RE = re.compile(
 )
 
 SMW_HEX_RE = re.compile(r'-(?P<h>[0-9A-Fa-f]{2})')
+
 def decode_smw_hex(s: str) -> str:
-    return SMW_HEX_RE.sub(lambda m: chr(int(m.group('h'), 16)), s)
+    def repl(m):
+        code = int(m.group('h'), 16)
+        # lubame dekodeerida ainult turvalised tähemärgid, nt koma
+        if code == 0x2C:  # ","
+            return ","
+        return m.group(0)  # muidu jäta alles "-XX"
+    return SMW_HEX_RE.sub(repl, s)
 
 def _fix_decimal_commas(xml_bytes: bytes) -> bytes:
     """
@@ -374,59 +385,16 @@ async def parse_all_data_async(data_list):
 # =========================
 def build_interactive_graph(data, depths, filename="skill_graph.html"):
     net = Network(height="100vh", width="100%", directed=True)
-    _set_network_options(net)
     _add_nodes(net, data, depths)
     _add_edges(net, data)
     net.write_html(filename)
     _inject_html_controls(filename, depths)
 
-def _set_network_options(net):
-    net.set_options("""
-    const options = {
-      "nodes": {
-        "shape": "dot",
-        "scaling": {"min": 10, "max": 30},
-        "font": {"size": 16, "face": "Arial", "color": "#343434"},
-        "borderWidth": 2
-      },
-      "edges": {
-        "arrows": {"to": {"enabled": true, "scaleFactor": 0.8}},
-        "color": {"color": "#cccccc", "highlight": "#999999"},
-        "width": 1.5,
-        "smooth": {"enabled": true, "type": "dynamic", "roundness": 0.3}
-      },
-      "physics": {
-        "forceAtlas2Based": {"gravitationalConstant": -80, "springLength": 110, "springConstant": 0.05},
-        "minVelocity": 0.75,
-        "solver": "forceAtlas2Based"
-      },
-      "interaction": {
-        "hover": true,
-        "tooltipDelay": 200,
-        "navigationButtons": true,
-        "keyboard": true,
-        "multiselect": true,
-        "zoomView": true
-      },
-      "layout": {"improvedLayout": true}
-    }
-    """)
-
 def _add_nodes(net, data, depths):
     for key, info in data.items():
         label = info["label"]
         level = depths.get(key, 0)
-        size = 10 + len(info.get("subskills", [])) * 1.5
-
-        # Parandatud värviloogika: kasutame reaalseid võtmeid (prerequisites/competency/subskills)
-        if info.get("prerequisites"):
-            color = "#a1c9f1"   # hele sinine – eeldused
-        elif info.get("subskills"):
-            color = "#bf98e6"   # lilla – osaoskus
-        elif info.get("tegevusnaitajad"):
-            color = "#27ae60"
-        else:
-            color = "#b7e1cd"   # vaikimisi
+        size: 40
 
         net.add_node(
             key,
@@ -436,7 +404,6 @@ def _add_nodes(net, data, depths):
             size=size,
             level=level,
             link=info.get("link",""),
-            color=color
         )
 
 def _add_edges(net, data):
