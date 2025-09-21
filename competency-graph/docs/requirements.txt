@@ -7,3 +7,6 @@ requests
 aiohttp
 diskcache
 aiolimiter
+pytest
+pytest-asyncio
+requests-mock

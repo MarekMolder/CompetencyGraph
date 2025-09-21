@@ -93,7 +93,7 @@ def decode_smw_hex(s: str) -> str:
         return m.group(0)  # muidu jäta alles "-XX"
     return SMW_HEX_RE.sub(repl, s)
 
-def _fix_decimal_commas(xml_bytes: bytes) -> bytes:
+def fix_decimal_commas(xml_bytes: bytes) -> bytes:
     """
     Asendab xsd:double elementide TEXT-is koma punktiga.
     Ei puutu teisi elemente. Teeme seda ka cache-hit'i puhul.
@@ -169,7 +169,7 @@ async def _fetch_rdf(session: aiohttp.ClientSession, skill_name: str) -> bytes:
     cached = CACHE.get(cache_key)
     if cached is not None:
         # ka hit'i puhul jookse läbi fix (kui mõni vana v2 sisse satub)
-        fixed = _fix_decimal_commas(cached)
+        fixed = fix_decimal_commas(cached)
         if fixed != cached:
             CACHE.set(cache_key, fixed, expire=CACHE_TTL)
         return fixed
@@ -182,7 +182,7 @@ async def _fetch_rdf(session: aiohttp.ClientSession, skill_name: str) -> bytes:
                     async with session.get(url, headers=HEADERS, ssl=False) as resp:
                         resp.raise_for_status()
                         blob = await resp.read()
-                        blob = _fix_decimal_commas(blob)  # ⬅️ parandame ENNE cache’i
+                        blob = fix_decimal_commas(blob)  # ⬅️ parandame ENNE cache’i
                         CACHE.set(cache_key, blob, expire=CACHE_TTL)
                         return blob
             except Exception:
@@ -381,111 +381,6 @@ async def parse_all_data_async(data_list):
     return data, depths
 
 # =========================
-#     VISUALIZATION
-# =========================
-def build_interactive_graph(data, depths, filename="skill_graph.html"):
-    net = Network(height="100vh", width="100%", directed=True)
-    _add_nodes(net, data, depths)
-    _add_edges(net, data)
-    net.write_html(filename)
-    _inject_html_controls(filename, depths)
-
-def _add_nodes(net, data, depths):
-    for key, info in data.items():
-        label = info["label"]
-        level = depths.get(key, 0)
-        size: 40
-
-        net.add_node(
-            key,
-            label=label,
-            title=f"Skill: {label}\nDescription: {info.get('description','')}\nClick me!",
-            shape="dot",
-            size=size,
-            level=level,
-            link=info.get("link",""),
-        )
-
-def _add_edges(net, data):
-    added_edges = set()
-    for node_id, info in data.items():
-        edge_types = [
-            ("subskills", "#e74c3c"),
-            ("prerequisites", "#2980b9"),
-            ("tegevusnaitajad", "#27ae60"),
-            ("knobitid", "#9b59b6"),
-            ("tn_eeldab", "#2980b9"),
-        ]
-        for key, color in edge_types:
-            for target in info.get(key, []):
-                if target in data:
-                    edge = (target, node_id, color)
-                    if edge not in added_edges:
-                        net.add_edge(source=target, to=node_id, color=color)
-                        added_edges.add(edge)
-
-def _inject_html_controls(filename, depths):
-    with open(filename, "r", encoding="utf-8") as f:
-        html = f.read()
-
-    levels = sorted(set(depths.values()))
-    filter_controls = "\n".join([
-        f'<label><input type="checkbox" id="toggleLevel{lvl}" checked onchange="toggleLevel({lvl})"> Level {lvl}</label><br>'
-        for lvl in levels
-    ])
-
-    custom_html = f"""
-    <style>
-      #controls {{ position: fixed; top: 10px; left: 10px; z-index: 1000; background: #fff;
-                  padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }}
-    </style>
-    <div id="controls">
-      <input type="text" id="searchBox" placeholder="Search skill..." oninput="searchNode()" />
-      <br><br>
-      {filter_controls}
-    </div>
-    <script>
-    function searchNode() {{
-        var term = document.getElementById("searchBox").value.toLowerCase();
-        nodes.get().forEach(function(n) {{
-            var visible = n.label.toLowerCase().includes(term);
-            nodes.update({{id: n.id, hidden: !visible}});
-        }});
-    }}
-    function toggleLevel(level) {{
-        var checked = document.getElementById("toggleLevel" + level).checked;
-        nodes.get().forEach(function(n) {{
-            if (n.level === level) {{
-                nodes.update({{id: n.id, hidden: !checked}});
-            }}
-        }});
-    }}
-    network.on("click", function (params) {{
-        if (params.nodes.length > 0) {{
-            var nodeId = params.nodes[0];
-            var node = nodes.get(nodeId);
-            if (node.link) {{
-                window.open(node.link, "_blank");
-            }}
-        }}
-    }});
-    </script>
-    </body>"""
-
-    html = html.replace("</body>", custom_html)
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(html)
-
-def export_graphml(data, filename="skills_graph.graphml"):
-    g = nx.DiGraph()
-    for label, info in data.items():
-        g.add_node(label, description=info.get("description",""), link=info.get("link",""))
-        for sub in info.get("subskills", []):
-            g.add_edge(sub, label)
-    nx.write_graphml(g, filename)
-    print(f"GraphML exported: {filename}")
-
-# =========================
 #        MAIN
 # =========================
 if __name__ == "__main__":
@@ -499,8 +394,5 @@ if __name__ == "__main__":
     # UUS: asünkroonne täisgraafi laadimine (paralleel + cache)
     parsed_data, depths = asyncio.run(parse_all_data_async(seed))
 
-    build_interactive_graph(parsed_data, depths)
-    if EXPORT_GRAPHML:
-        export_graphml(parsed_data)
 
 parse_all_skills_recursive = parse_all_data_async
