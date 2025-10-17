@@ -2,29 +2,27 @@ html, body {
   margin: 0;
   border-radius: 0 !important;
   height: 100%;
-  background: #1e1f26; /* ühtlane tume-hallikas must */
-
-  /* peen täpimuster – nagu Obsidiani graafivaates */
-  background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
-  background-size: 28px 28px; /* võid suurust muuta – 20–40px annab erineva tiheduse */
-  background-attachment: fixed; /* hoiab mustri paigal */
+  background: #ffffff;
+  background-image: radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-attachment: fixed;
 }
 
 /* Graafi ala */
 #network {
   width: 100%;
   height: 88vh;
-  background: #1e1f26;
-  background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+  background: #ffffff;
+  background-image: radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 
 .col-md-8 {
-  flex: 0 0 75%;   /* võtab ~75% laiust */
+  flex: 0 0 75%;
   max-width: 75%;
 }
 .col-md-4 {
-  flex: 0 0 25%;   /* info-paneel ~25% */
+  flex: 0 0 25%;
   max-width: 25%;
 }
 
@@ -38,321 +36,284 @@ html, body {
   align-items: flex-start;
 }
 
-/* Header */
+/* === HEADER === */
 header {
   position: sticky;
   top: 0;
   z-index: 1200;
-  background: rgba(42, 44, 65, 0.8); /* klaasjas tume toon, mitte liiga lillakas */
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-
-  /* pane pehme raam ja sügavus */
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
   box-shadow:
-    0 2px 12px rgba(0, 0, 0, 0.6),    /* tugevam vari allapoole */
-    0 1px 0 rgba(255, 255, 255, 0.08), /* õrn sisemine valge joon ülal */
-    inset 0 0 12px rgba(255, 255, 255, 0.02); /* kerge sisemine kuma */
-
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05); /* väga peen eristus */
-  color: #fff;
+    0 2px 12px rgba(0, 0, 0, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  color: #222;
 }
 
-#searchForm{
-  position: relative;    /* et dropdown ankurduks siia */
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+/* Otsinguvorm */
+#searchForm {
+  position: relative;
+  background: rgba(255,255,255,0.8);
   border-radius: 40px;
   padding: 8px 15px;
-  box-shadow: 0 4px 30px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.06);
 }
 
-/* INPUT */
-#skillInput{
+/* Input */
+#skillInput {
   background: transparent;
   border: none;
-  color: #fff;
+  color: #222;
 }
-#skillInput::placeholder{ color: rgba(255,255,255,0.6); }
+#skillInput::placeholder { color: #999; }
 
 /* Luuubi nupp */
-#searchForm .btn{
+#searchForm .btn {
   border: none;
   border-radius: 30px;
-  background: rgba(255,255,255,0.15);
-  color:#fff;
-  transition:.2s;
+  background: linear-gradient(90deg, #007aff, #00c6ff);
+  color: #fff;
+  transition: 0.25s;
 }
-#searchForm .btn:hover{ background: rgba(255,255,255,0.3); }
+#searchForm .btn:hover { background: linear-gradient(90deg, #0062d1, #00a0e0); }
 
-/* DROPDOWN – peab olema headeri kihist veel kõrgem */
-#searchDropdown{
+/* DROPDOWN */
+#searchDropdown {
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 1300;                 /* > headeri z-index */
-  background: #2c2f38;
-  border: 1px solid rgba(255,255,255,0.15);
+  z-index: 1300;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.1);
   border-radius: 8px;
   margin-top: 6px;
   max-height: 320px;
   overflow-y: auto;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
 }
-#searchDropdown .dropdown-item{ color:#fff; cursor:pointer; }
-#searchDropdown .dropdown-item:hover{ background: rgba(255,255,255,0.1); }
-
-/* Kindlusta, et Bootstrap kuvaks menüü kui .show on peal */
-#searchDropdown.show{ display:block; }
+#searchDropdown .dropdown-item { color: #222; cursor: pointer; }
+#searchDropdown .dropdown-item:hover { background: #f0f6ff; }
 
 /* Logo wrapper */
 .logo-link {
-  color: #fff; /* valge, sobib tumedale taustale */
+  color: #222;
   font-weight: 700;
   font-size: 1.5rem;
   transition: color 0.2s;
 }
-.logo-link:hover {
-  color: #a8c5ff; /* pehme sinakas hover */
-}
+.logo-link:hover { color: #007aff; }
 
-/* Logo pilt */
 .logo-img {
-  height: 45px;   /* võid muuta */
+  height: 45px;
   width: auto;
-  filter: brightness(2) contrast(1.1); /* et logo oleks erksam */
+  filter: brightness(1) contrast(1.1);
 }
 
 /* Logo tekst */
 .logo-text {
   font-weight: 700;
   font-size: 1.7rem;
-  background: linear-gradient(90deg, #6a8dff, #8a7dff, #c27dff);
+  background: linear-gradient(90deg, #007aff, #8b6cff, #c07dff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
+/* Filter chip */
 .filter-chip {
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 1px solid rgba(0,0,0,0.1);
   border-radius: 20px;
   padding: 4px 12px;
-  background: transparent;
-  color: #ddd;
+  background: #f8f9fa;
+  color: #222;
   font-size: 1rem;
   display: flex;
   align-items: center;
   gap: 6px;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 30px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
-
 .filter-chip:hover {
-  background: rgba(255,255,255,0.15);
-  color: #fff;
-  border-color: rgba(255,255,255,0.3);
+  background: #eaf3ff;
+  color: #007aff;
+  border-color: #007aff;
 }
 
+/* === SKILL INFO === */
 #skillInfo {
   position: fixed;
   top: 90px;
   right: 20px;
   max-width: 380px;
-  max-height: 80vh;           /* piirab kõrguse */
-  overflow-y: auto;           /* scroll, kui liiga pikk */
-  word-wrap: break-word;      /* murrab pikad sõnad */
-  overflow-wrap: anywhere;    /* lisaks kindlustus */
+  max-height: 80vh;
+  overflow-y: auto;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
   white-space: normal;
-
-  background: rgba(30, 31, 38, 0.85);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  background: #ffffff;
   border-radius: 18px;
   padding: 20px;
-  color: #f1f3f6;
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    inset 0 0 20px rgba(255, 255, 255, 0.015);
-
-  display: none; /* vaikimisi peidetud */
+  color: #222;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  border: 1px solid rgba(0,0,0,0.05);
+  display: none;
 }
-
-/* kui hover/aktiivne */
 #skillInfo.show {
   display: flex;
   flex-direction: column;
 }
 
-/* Pealkiri minimalistlik gradient */
+/* Pealkiri gradient */
 .skill-info h5 {
   font-size: 1.4rem;
   font-weight: 700;
   margin-bottom: 12px;
-  background: linear-gradient(90deg, #9ab6ff, #b89cff, #d8aaff);
+  background: linear-gradient(90deg, #007aff, #9b5dff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-/* Tekst neutraalne */
+/* Tekstid */
 .skill-info p,
 .skill-info div {
   margin-bottom: 10px;
-  color: rgba(240, 240, 240, 0.9);
+  color: #444;
   font-size: 1rem;
   line-height: 1.6;
 }
 
-/* Lingid sinakad nagu Obsidianis */
+/* Lingid */
 .skill-info a {
-  color: #8cbcff;
+  color: #007aff;
   text-decoration: none;
   font-weight: 500;
 }
 .skill-info a:hover {
   text-decoration: underline;
-  color: #b2d4ff;
+  color: #005ecb;
 }
 
-/* Nupud klaasja vibe’iga */
+/* Nupud */
 .skill-info a.btn {
   border-radius: 20px;
   padding: 6px 16px;
   font-size: 0.9rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: #007aff;
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: none;
   transition: background 0.2s, transform 0.2s;
 }
 .skill-info a.btn:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: #005ecb;
   transform: translateY(-2px);
 }
 
+/* InfoLink */
 #infoLink {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
-  position: relative;      /* jääb oma konteineri sees */
-  float: none;             /* eemaldame float'i */
-  margin-left: auto;       /* lükkab ta paremale */
-  margin-top: 12px;        /* natuke ruumi ülevalt */
-
+  margin-left: auto;
+  margin-top: 12px;
   border-radius: 16px;
   padding: 6px 14px;
   font-size: 0.9rem;
   font-weight: 500;
-
-  background: rgba(255, 255, 255, 0.08);
-  color: #e8ecf3;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
+  background: #007aff;
+  color: #fff;
+  border: none;
   transition: all 0.25s ease;
 }
-
 #infoLink:hover {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.2);
+  background: #005ecb;
   transform: translateY(-2px);
-  text-decoration: none;
 }
 
-/* MODAL üldine wrapper */
+/* === MODAL === */
 .modal-content {
-  background: rgba(30, 31, 38, 0.88); /* sarnane #skillInfo taustale */
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  background: #ffffff;
   border-radius: 18px;
-  color: #f1f3f6;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.55),
-    inset 0 0 20px rgba(255, 255, 255, 0.02);
+  color: #222;
+  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
 }
 
-/* Header */
+/* Modal header */
 .modal-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(0,0,0,0.08);
 }
 .modal-title {
   font-weight: 700;
   font-size: 1.3rem;
-  background: linear-gradient(90deg, #9ab6ff, #b89cff, #d8aaff);
+  background: linear-gradient(90deg, #007aff, #b67cff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-/* Body */
+/* Modal body */
 .modal-body {
-  color: rgba(240,240,240,0.9);
+  color: #333;
 }
 .modal-body h6 {
   margin-top: 1rem;
   font-size: 1rem;
-  color: #c2c8e0;
+  color: #555;
 }
 
-/* Footer */
+/* Modal footer */
 .modal-footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(0,0,0,0.08);
 }
 .modal-footer .btn {
   border-radius: 20px;
   padding: 6px 16px;
   font-size: 0.9rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: #007aff;
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: none;
   transition: background 0.2s, transform 0.2s;
 }
 .modal-footer .btn:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: #005ecb;
   transform: translateY(-2px);
 }
 
-/* Form elemendid klaasja vibe’iga */
+/* Vorm */
 .modal-body .form-select,
 .modal-body .form-control {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: #fff;
+  background: #f8f9fa;
+  border: 1px solid rgba(0,0,0,0.1);
+  color: #222;
 }
 .modal-body .form-select:focus,
 .modal-body .form-control:focus {
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.3);
-  color: #fff;
-  box-shadow: 0 0 0 2px rgba(138,125,255,0.3);
+  background: #fff;
+  border-color: #007aff;
+  box-shadow: 0 0 0 2px rgba(0,122,255,0.25);
 }
 
-/* Switch ja checkbox */
+/* Checkbox */
 .form-check-input {
-  background-color: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.25);
+  background-color: #e9e9e9;
+  border: 1px solid rgba(0,0,0,0.2);
 }
 .form-check-input:checked {
-  background-color: #8a7dff;
-  border-color: #8a7dff;
+  background-color: #007aff;
+  border-color: #007aff;
 }
 
+/* Select */
 #levelSelect.form-select {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: #fff;
+  background: #f8f9fa;
+  border: 1px solid rgba(0,0,0,0.1);
+  color: #333;
 }
-
 #levelSelect.form-select option {
-  background: rgba(30,31,38,0.95); /* tumedam taust valikutele */
-  color: #f1f3f6;
+  background: #fff;
+  color: #333;
 }
-
-/* fookuse efekt */
 #levelSelect.form-select:focus {
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(138,125,255,0.5);
-  color: #fff;
-  box-shadow: 0 0 0 2px rgba(138,125,255,0.25);
+  border-color: #007aff;
+  box-shadow: 0 0 0 2px rgba(0,122,255,0.25);
 }

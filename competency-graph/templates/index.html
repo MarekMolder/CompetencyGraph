@@ -25,7 +25,7 @@
         <!-- Sügavus -->
         <div class="mb-3">
           <label for="levelSelect" class="form-label">Sügavus:</label>
-          <select id="levelSelect" class="form-select" onchange="applyLevelFilter()">
+          <select id="levelSelect" class="form-select" onchange="recomputeVisibility()">
             <option value="1">1</option>
             <option value="2">2</option>
             <option value="3">3</option>
@@ -37,28 +37,31 @@
 
         <!-- Checkbox eelduste jaoks -->
         <div class="form-check form-switch mb-3">
-          <input class="form-check-input" type="checkbox" id="showOnlyPrerequisites" onchange="applyEdgeFilter()">
+          <input class="form-check-input" type="checkbox" id="showOnlyPrerequisites" onchange="recomputeVisibility()">
           <label class="form-check-label" for="showOnlyPrerequisites">Ainult eelduseid</label>
         </div>
 
         <!-- Tüübi filtrid -->
         <h6>Tüüpide filtrid</h6>
         <div class="d-flex flex-wrap gap-3 mb-3">
-          <label><input type="checkbox" id="filterOskus" checked onchange="applyTypeFilter()"> Oskused</label>
-          <label><input type="checkbox" id="filterKompetents" checked onchange="applyTypeFilter()"> Kompetentsid</label>
-          <label><input type="checkbox" id="filterTn" checked onchange="applyTypeFilter()"> Tegevusnäitajad</label>
-          <label><input type="checkbox" id="filterKnobit" checked onchange="applyTypeFilter()"> Knobitid</label>
-          <label><input type="checkbox" id="filterMuu" checked onchange="applyTypeFilter()"> Tundmatu</label>
+          <label><input type="checkbox" id="filterOskus" checked onchange="recomputeVisibility()"> Oskused</label>
+          <label><input type="checkbox" id="filterKompetents" checked onchange="recomputeVisibility()"> Kompetentsid</label>
+          <label><input type="checkbox" id="filterTn" checked onchange="recomputeVisibility()"> Tegevusnäitajad</label>
+          <label><input type="checkbox" id="filterKnobit" checked onchange="recomputeVisibility()"> Knobitid</label>
+          <label><input type="checkbox" id="filterOpivaljund" checked onchange="recomputeVisibility()"> Õpiväljundid</label>
+          <label><input type="checkbox" id="filterMuu" checked onchange="recomputeVisibility()"> Tundmatu</label>
         </div>
 
         <!-- Servade filtrid -->
         <h6>Seoste filtrid</h6>
         <div class="d-flex flex-wrap gap-3">
-          <label><input type="checkbox" id="filterEdgeEeldab" checked onchange="applyEdgeTypeFilter()"> Eeldab</label>
-          <label><input type="checkbox" id="filterEdgeKoosneb" checked onchange="applyEdgeTypeFilter()"> Koosneb</label>
-          <label><input type="checkbox" id="filterEdgeSisaldabTn" checked onchange="applyEdgeTypeFilter()"> Sisaldab Tn</label>
-          <label><input type="checkbox" id="filterEdgeSisaldabKnobitit" checked onchange="applyEdgeTypeFilter()"> Sisaldab knobitit</label>
-          <label><input type="checkbox" id="filterEdgeTnEeldab" checked onchange="applyEdgeTypeFilter()"> Tn eeldab</label>
+          <label><input type="checkbox" id="filterEdgeEeldab" checked onchange="recomputeVisibility()"> Eeldab</label>
+          <label><input type="checkbox" id="filterEdgeKoosneb" checked onchange="recomputeVisibility()"> Koosneb</label>
+          <label><input type="checkbox" id="filterEdgeSisaldabTn" checked onchange="recomputeVisibility()"> Sisaldab Tn</label>
+          <label><input type="checkbox" id="filterEdgeSisaldabKnobitit" checked onchange="recomputeVisibility()"> Sisaldab knobitit</label>
+          <label><input type="checkbox" id="filterEdgeTnEeldab" checked onchange="recomputeVisibility()"> Tn eeldab</label>
+          <label><input type="checkbox" id="filterEdgeOvKnobit" checked onchange="recomputeVisibility()"> Sisaldab knobitit (ÕV)</label>
+          <label><input type="checkbox" id="filterEdgeOvEeldab" checked onchange="recomputeVisibility()"> Eeldab (ÕV)</label>
         </div>
 
       </div>

@@ -34,13 +34,13 @@ SKILLS_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Oskus"
 COMPETENCIES_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Kompetents"
 TEGEVUSNAITAJAD_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Tegevusnaitaja"
 KNOBITID_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Knobit"
+OPIVALJUNDID_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Opivaljund"
 
 ESCO_LINK = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aesco_link")
 ESCO_VASTE = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aesco_vaste")
 OSK_REG_KOOD = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aosk_reg_kood")
 VERB = URIRef("https://schema.edu.ee/verb")
 RELEVANT_OCCUPATION = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3ASchema-3ArelevantOccupation")
-
 
 OSAOSKUS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AosaOskus")
 SEOTUD_OSKUS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AeeldusOskus")
@@ -50,6 +50,14 @@ KOMP_SISALDAB_TN = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property
 TN_SISALDAB_KNOBITIT = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnSisaldabKnobitit")
 TN_EELDAB = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnEeldab")
 KNOBITI_LIIK = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AKnobitiLiik")
+OV_SISALDAB_KNOBITIT = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AOvSisaldabKnobitit")
+
+EELDAB = URIRef("https://schema.edu.ee/eeldab")
+KLASS = URIRef("https://schema.edu.ee/klass")
+KOOLIASTE = URIRef("https://schema.edu.ee/kooliaste")
+SEOTUD_OPPEAINE = URIRef("https://schema.edu.ee/seotudOppeaine")
+SEOTUD_TEEMA = URIRef("https://schema.edu.ee/seotudTeema")
+
 
 # =========================
 #   CONFIGURATION FLAGS
@@ -139,23 +147,34 @@ def _skill_key(skill_name: str) -> str:
 # =========================
 def get_all_data(category_url: str):
     """
-    Loeb kategoorialehelt data ID-d (URL-i viimased osad).
+    Loeb kategoorialehelt ja kõigilt järgmistelt lehtedelt kõik elemendid.
     """
     datas = set()
     try:
-        response = requests.get(category_url, timeout=20)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, "html.parser")
+        next_url = category_url
+        while next_url:
+            response = requests.get(next_url, timeout=20)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
 
-        # Leia kõik lingid, mis viitavad /a/ ja EI sisalda kategooria või erileht prefiksit
-        for link in soup.find_all("a", href=True):
-            href = link["href"]
-            if href.startswith("/a/") and not href.startswith("/a/Kategooria") and not href.startswith("/a/Eri:"):
-                datas.add(href.split("/a/")[-1])
+            # leia kõik elemendid
+            for link in soup.find_all("a", href=True):
+                href = link["href"]
+                if href.startswith("/a/") and not href.startswith("/a/Kategooria") and not href.startswith("/a/Eri:"):
+                    datas.add(href.split("/a/")[-1])
+
+            # otsi “järgmine lehekülg” link
+            next_link = soup.find("a", string="järgmine lehekülg")
+            if next_link and next_link["href"]:
+                next_url = "https://oppekava.edu.ee" + next_link["href"]
+            else:
+                next_url = None  # viimane leht
 
         print(f"Found {len(datas)} data from {category_url}")
+
     except Exception as e:
         print(f"Error retrieving data from {category_url}: {e}")
+
     return [normalize_key(d) for d in datas]
 
 # =========================
@@ -259,6 +278,10 @@ async def _process_one(session: aiohttp.ClientSession, skill_name: str, depth: i
                 "osk_reg_kood": str(g_rdf.value(subject_uri, OSK_REG_KOOD, default="")),
                 "skill_verb": str(g_rdf.value(subject_uri, VERB, default="")),
                 "relevant_occupations": relevant_occupations,
+                "klass": str(g_rdf.value(subject_uri, KLASS, default="")),
+                "kooliaste": str(g_rdf.value(subject_uri, KOOLIASTE, default="")),
+                "seotud_oppeaine": str(g_rdf.value(subject_uri, SEOTUD_OPPEAINE, default="")),
+                "seotud_teema": str(g_rdf.value(subject_uri, SEOTUD_TEEMA, default="")),
             }
 
         # 1) subskills
@@ -337,6 +360,30 @@ async def _process_one(session: aiohttp.ClientSession, skill_name: str, depth: i
                 if tn_req_key not in visited:
                     visited.add(tn_req_key)
                     await q.put((tn_req_name, depth + 1))
+
+        # 7) Õpiväljund sisaldab knobiteid
+        for o in g_rdf.objects(subject=subject_uri, predicate=OV_SISALDAB_KNOBITIT):
+            ov_kn_uri = str(o)
+            ov_kn_name = uri_to_skill_name(ov_kn_uri)
+            ov_kn_key = _skill_key(ov_kn_name)
+            if ov_kn_key not in node.setdefault("ov_knobitid", []):
+                node["ov_knobitid"].append(ov_kn_key)
+            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
+                if ov_kn_key not in visited:
+                    visited.add(ov_kn_key)
+                    await q.put((ov_kn_name, depth + 1))
+
+            # 8) Õpiväljund eeldab teist õpiväljundit
+        for o in g_rdf.objects(subject=subject_uri, predicate=EELDAB):
+            eeldab_uri = str(o)
+            eeldab_name = uri_to_skill_name(eeldab_uri)
+            eeldab_key = _skill_key(eeldab_name)
+            if eeldab_key not in node.setdefault("eeldab", []):
+                node["eeldab"].append(eeldab_key)
+            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
+                if eeldab_key not in visited:
+                    visited.add(eeldab_key)
+                    await q.put((eeldab_name, depth + 1))
 
     except Exception as e:
         print(f"[warn] {skill_name}: {e}")
@@ -493,8 +540,9 @@ if __name__ == "__main__":
     competencies = get_all_data(COMPETENCIES_URL)
     tegevusnaitajad = get_all_data(TEGEVUSNAITAJAD_URL)
     knobitid = get_all_data(KNOBITID_URL)
+    opivaljundid = get_all_data(OPIVALJUNDID_URL)
 
-    seed = skills + competencies + tegevusnaitajad + knobitid
+    seed = skills + competencies + tegevusnaitajad + knobitid + opivaljundid
 
     # UUS: asünkroonne täisgraafi laadimine (paralleel + cache)
     parsed_data, depths = asyncio.run(parse_all_data_async(seed))

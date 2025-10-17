@@ -80,233 +80,71 @@ function filterGraphBySearch(term) {
     });
     updateNodeInfo(matchedNode);
     // RAKENDA sügavuse filter, et näidata õige hulk node’e + kaared
-    applyLevelFilter();
+    recomputeVisibility();
 }
 function renderGraph(nodesData, edgesData) {
     const container = document.getElementById("network");
-    nodesData.forEach((node) => {
-        if (!node.color) {
-            node.color = {
-                background: "#ffffff",
-                border: "#007bff",
-                highlight: {
-                    background: "#e0f0ff",
-                    border: "#0056b3"
-                }
-            };
-            node.borderWidth = 1;
-        }
-    });
-    edgesData.forEach((edge) => {
-        if (!edge.color) {
-            edge.color = "#cccccc"; // fallback värv
-        }
-    });
-    nodes = new vis.DataSet(nodesData);
-    edges = new vis.DataSet(edgesData);
-    const data = { nodes, edges };
-    const options = getGraphOptions();
-    network = new vis.Network(container, data, options);
+    const defaultNodeColor = {
+        background: "#ffffff",
+        border: "#007bff",
+        highlight: { background: "#e0f0ff", border: "#0056b3" }
+    };
+    nodes = new vis.DataSet(nodesData.map(n => {
+        var _a;
+        return (Object.assign(Object.assign({}, n), { color: n.color || defaultNodeColor, borderWidth: (_a = n.borderWidth) !== null && _a !== void 0 ? _a : 1 }));
+    }));
+    edges = new vis.DataSet(edgesData.map(e => (Object.assign(Object.assign({}, e), { color: e.color || "#cccccc" }))));
+    network = new vis.Network(container, { nodes, edges }, getGraphOptions());
     const dropdown = document.getElementById("searchDropdown");
-    dropdown.innerHTML = nodes.get().slice(0, 200).map((n) => `<li><a class="dropdown-item" href="#" data-id="${n.id}">${n.label}</a></li>`).join("");
+    dropdown.innerHTML = nodes
+        .get()
+        .slice(0, 200)
+        .map((n) => `<li><a class="dropdown-item" href="#" data-id="${n.id}">${n.label}</a></li>`)
+        .join("");
+    // Ühtne click-handler
     network.on("click", (params) => {
+        if (params.nodes.length === 0) {
+            if (lastClickedNode)
+                resetNodeStyle(lastClickedNode.id);
+            lastClickedNode = null;
+            isPanelPinned = false;
+            hideNodeInfo();
+            recomputeVisibility();
+            return;
+        }
+        const clickedId = params.nodes[0];
+        const node = nodes.get(clickedId);
         if (isJobCreationMode) {
-            if (params.nodes.length > 0) {
-                const clickedNodeId = params.nodes[0];
-                const node = nodes.get(clickedNodeId);
-                if (!selectedSkills.has(node.label)) {
-                    selectedSkills.add(node.label);
-                    updateSelectedSkillsDisplay();
-                }
+            if (!selectedSkills.has(node.label)) {
+                selectedSkills.add(node.label);
+                updateSelectedSkillsDisplay();
             }
             return;
         }
-        if (params.nodes.length > 0) {
-            const clickedNodeId = params.nodes[0];
-            // Eemalda eelmine valik
-            if (lastClickedNode) {
-                nodes.update({
-                    id: lastClickedNode.id,
-                    color: {
-                        background: "#ffffff",
-                        border: "#007bff",
-                        highlight: {
-                            background: "#e0f0ff",
-                            border: "#0056b3"
-                        }
-                    },
-                    borderWidth: 1
-                });
-            }
-            // Aktiveeri uus
-            nodes.update({
-                id: clickedNodeId,
-                color: {
-                    background: "#007bff",
-                    border: "#f89090",
-                    highlight: {
-                        background: "#0056b3",
-                        border: "#f89090"
-                    }
-                },
-                borderWidth: 0.5
-            });
-            lastClickedNode = nodes.get(clickedNodeId);
-            applyLevelFilter();
-        }
-        else {
-            // Klikiti tühjale – eemalda valik
-            if (lastClickedNode) {
-                nodes.update({
-                    id: lastClickedNode.id,
-                    color: {
-                        background: "#ffffff",
-                        border: "#007bff",
-                        highlight: {
-                            background: "#e0f0ff",
-                            border: "#0056b3"
-                        }
-                    },
-                    borderWidth: 1
-                });
-                lastClickedNode = null;
-                applyLevelFilter();
-            }
-        }
+        if (lastClickedNode)
+            resetNodeStyle(lastClickedNode.id);
+        nodes.update({
+            id: clickedId,
+            color: {
+                background: "#007bff",
+                border: "#f89090",
+                highlight: { background: "#0056b3", border: "#f89090" }
+            },
+            borderWidth: 0.5
+        });
+        lastClickedNode = node;
+        updateNodeInfo(node);
+        isPanelPinned = true;
+        recomputeVisibility();
     });
-    network.on("hoverNode", (params) => {
-        if (!isPanelPinned) {
-            const node = nodes.get(params.node);
-            updateNodeInfo(node);
-        }
-    });
-    // Kui hiirega node’ilt ära lähed ja pole pinned → peida
-    network.on("blurNode", () => {
-        hideNodeInfo();
-    });
-    // Kui klõpsad node’i peale → paneel lukku
-    network.on("click", (params) => {
-        if (params.nodes.length > 0) {
-            const clickedNodeId = params.nodes[0];
-            const node = nodes.get(clickedNodeId);
-            updateNodeInfo(node);
-            isPanelPinned = true; // lukusta
-        }
-        else {
-            // Kui klõpsad tühjale → vabasta
-            isPanelPinned = false;
-            hideNodeInfo();
-        }
-    });
+    network.on("hoverNode", (params) => !isPanelPinned && updateNodeInfo(nodes.get(params.node)));
+    network.on("blurNode", hideNodeInfo);
 }
-function applyLevelFilter() {
-    const selectedLevel = parseInt(document.getElementById("levelSelect").value);
-    if (!lastClickedNode || selectedLevel === 99) {
-        nodes.get().forEach((n) => nodes.update({ id: n.id, hidden: false }));
-        return;
-    }
-    const queue = [{ id: lastClickedNode.id, depth: 0 }];
-    const visible = new Set([lastClickedNode.id]);
-    for (let i = 0; i < queue.length; i++) {
-        const { id, depth } = queue[i];
-        if (depth >= selectedLevel)
-            continue;
-        edges.get().forEach((edge) => {
-            if (edge.from === id && !visible.has(edge.to)) {
-                visible.add(edge.to);
-                queue.push({ id: edge.to, depth: depth + 1 });
-            }
-            else if (edge.to === id && !visible.has(edge.from)) {
-                visible.add(edge.from);
-                queue.push({ id: edge.from, depth: depth + 1 });
-            }
-        });
-    }
-    nodes.get().forEach((n) => {
-        nodes.update({ id: n.id, hidden: !visible.has(n.id) });
-    });
-}
-function applyEdgeFilter() {
-    const checkbox = document.getElementById("showOnlyPrerequisites");
-    const showOnlyPrerequisites = checkbox.checked;
-    if (!lastClickedNode)
-        return;
-    if (showOnlyPrerequisites) {
-        const visibleNodeIds = new Set();
-        const visibleEdgeIds = new Set();
-        // BFS eeldab-seostele
-        const queue = [lastClickedNode.id];
-        visibleNodeIds.add(lastClickedNode.id);
-        while (queue.length > 0) {
-            const current = queue.shift();
-            edges.get().forEach((edge) => {
-                if (edge.label === "eeldab") {
-                    if (edge.from === current && !visibleNodeIds.has(edge.to)) {
-                        visibleNodeIds.add(edge.to);
-                        visibleEdgeIds.add(edge.id);
-                        queue.push(edge.to);
-                    }
-                    else if (edge.to === current && !visibleNodeIds.has(edge.from)) {
-                        visibleNodeIds.add(edge.from);
-                        visibleEdgeIds.add(edge.id);
-                        queue.push(edge.from);
-                    }
-                    else if (edge.from === current || edge.to === current) {
-                        visibleEdgeIds.add(edge.id); // Lisa serv, kui üks ots juba olemas
-                    }
-                }
-            });
-        }
-        // Peida kõik node’id, mis ei kuulu eeldab-harusse
-        nodes.get().forEach((node) => {
-            const isVisible = visibleNodeIds.has(node.id);
-            nodes.update({ id: node.id, hidden: !isVisible });
-        });
-        // Peida kõik muud servad peale eeldab-seoseid
-        edges.get().forEach((edge) => {
-            const isVisible = visibleEdgeIds.has(edge.id);
-            edges.update({ id: edge.id, hidden: !isVisible });
-        });
-    }
-    else {
-        // Taasta kõik
-        nodes.get().forEach((node) => {
-            nodes.update({ id: node.id, hidden: false });
-        });
-        edges.get().forEach((edge) => {
-            edges.update({ id: edge.id, hidden: false });
-        });
-    }
-}
-function applyEdgeTypeFilter() {
-    const showEeldab = document.getElementById("filterEdgeEeldab").checked;
-    const showKoosneb = document.getElementById("filterEdgeKoosneb").checked;
-    const showSisaldabTn = document.getElementById("filterEdgeSisaldabTn").checked;
-    const showSisaldabKnobitit = document.getElementById("filterEdgeSisaldabKnobitit").checked;
-    const showTnEeldab = document.getElementById("filterEdgeTnEeldab").checked;
-    edges.get().forEach((e) => {
-        let visible = true;
-        switch (e.label) {
-            case "eeldab":
-                visible = showEeldab;
-                break;
-            case "koosneb":
-                visible = showKoosneb;
-                break;
-            case "sisaldab Tn":
-                visible = showSisaldabTn;
-                break;
-            case "sisaldab knobitit":
-                visible = showSisaldabKnobitit;
-                break;
-            case "Tn eeldab":
-                visible = showTnEeldab;
-                break;
-        }
-        // Ära näita serva, kui tema node’id on juba peidetud
-        const fromVisible = !nodes.get(e.from).hidden;
-        const toVisible = !nodes.get(e.to).hidden;
-        edges.update({ id: e.id, hidden: !(visible && fromVisible && toVisible) });
+function resetNodeStyle(id) {
+    nodes.update({
+        id,
+        color: { background: "#ffffff", border: "#007bff", highlight: { background: "#e0f0ff", border: "#0056b3" } },
+        borderWidth: 1
     });
 }
 function showError(message) {
@@ -318,8 +156,16 @@ function getGraphOptions() {
     return {
         nodes: {
             shape: "dot",
-            font: { size: 16, color: "#5c5c5c" },
-            borderWidth: 2
+            size: 20,
+            font: {
+                size: 20,
+                color: "#333",
+                face: "arial",
+                vadjust: 0,
+                multi: "html",
+                maxWidth: 300, // 🟢 piirab tekstirida, et see murraks
+            },
+            margin: 10,
         },
         edges: {
             arrows: "to",
@@ -335,20 +181,27 @@ function getGraphOptions() {
         },
         interaction: {
             hover: true,
-            navigationButtons: false,
-            keyboard: true,
+            navigationButtons: true,
+            keyboard: false,
             zoomView: true
         },
         layout: { improvedLayout: true },
         physics: {
-            forceAtlas2Based: {
-                gravitationalConstant: -80,
-                springLength: 110,
-                springConstant: 0.05
-            },
+            enabled: true,
             solver: "forceAtlas2Based",
-            minVelocity: 0.75
-        }
+            stabilization: { enabled: true, iterations: 250, updateInterval: 25, fit: true },
+            forceAtlas2Based: {
+                gravitationalConstant: -45, // väiksem tõuge → klastrid lähemal
+                centralGravity: 0.004, // tugevam tõmme keskpunkti
+                springLength: 130, // veidi lühemad ühendused
+                springConstant: 0.025, // pisut jäigemad ühendused
+                avoidOverlap: 0.7 // hoiab sildid loetavana, aga mitte üle paisutatult
+            },
+            maxVelocity: 25,
+            minVelocity: 0.5,
+            timestep: 0.5,
+            adaptiveTimestep: true,
+        },
     };
 }
 let isPanelPinned = false; // uus flag
@@ -389,6 +242,19 @@ function formatExtraNodeInfo(node) {
         const occLinks = node.relevant_occupations.map((o) => `<a href="${o.uri}" target="_blank">${o.label}</a>`).join(", ");
         info.push(`<p><strong>Seotud ametid:</strong> ${occLinks}</p>`);
     }
+    // --- Õpiväljundi lisainfo ---
+    if (node.klass)
+        info.push(`<p><strong>Klass:</strong> ${node.klass}</p>`);
+    if (node.kooliaste)
+        info.push(`<p><strong>Kooliaste:</strong> ${node.kooliaste}</p>`);
+    if (node.seotud_oppeaine)
+        info.push(`<p><strong>Seotud õppeaine:</strong> 
+      <a href="${node.seotud_oppeaine}" target="_blank">${node.seotud_oppeaine.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</a>
+    </p>`);
+    if (node.seotud_teema)
+        info.push(`<p><strong>Seotud teema:</strong> 
+      <a href="${node.seotud_teema}" target="_blank">${node.seotud_teema.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</a>
+    </p>`);
     return info.join("");
 }
 // Init
@@ -443,43 +309,89 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     drawGraph(""); // lae alguses
 });
-function normalizeSkill(text) {
-    const trimmed = text.trim();
-    if (!trimmed)
-        return "";
-    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+function getCheckbox(id, def = true) {
+    const el = document.getElementById(id);
+    return el ? el.checked : def;
 }
-function applyTypeFilter() {
-    const showOskus = document.getElementById("filterOskus").checked;
-    const showKompetents = document.getElementById("filterKompetents").checked;
-    const showTn = document.getElementById("filterTn").checked;
-    const showKnobit = document.getElementById("filterKnobit").checked;
-    const showMuu = document.getElementById("filterMuu").checked;
-    nodes.get().forEach((n) => {
-        let visible = true;
-        switch (n.type) {
-            case "oskus":
-                visible = showOskus;
-                break;
-            case "kompetents":
-                visible = showKompetents;
-                break;
-            case "tegevusnaitaja":
-                visible = showTn;
-                break;
-            case "knobit":
-                visible = showKnobit;
-                break;
-            case "muu":
-                visible = showMuu;
-                break;
+function recomputeVisibility() {
+    if (!nodes || !edges)
+        return;
+    const levelEl = document.getElementById("levelSelect");
+    const selectedDepth = levelEl ? parseInt(levelEl.value, 10) : 99;
+    const onlyPrereq = getCheckbox("showOnlyPrerequisites", false);
+    const typeFilters = {
+        oskus: getCheckbox("filterOskus"),
+        kompetents: getCheckbox("filterKompetents"),
+        tegevusnaitaja: getCheckbox("filterTn"),
+        knobit: getCheckbox("filterKnobit"),
+        opivaljund: getCheckbox("filterOpivaljund"),
+        muu: getCheckbox("filterMuu")
+    };
+    const edgeFilters = {
+        "eeldab": getCheckbox("filterEdgeEeldab"),
+        "koosneb": getCheckbox("filterEdgeKoosneb"),
+        "sisaldab Tn": getCheckbox("filterEdgeSisaldabTn"),
+        "sisaldab knobitit": getCheckbox("filterEdgeSisaldabKnobitit"),
+        "Tn eeldab": getCheckbox("filterEdgeTnEeldab"),
+        "sisaldab knobitit (OV)": getCheckbox("filterEdgeOvKnobit"),
+        "eeldab (OV)": getCheckbox("filterEdgeOvEeldab"),
+    };
+    const allNodes = nodes.get();
+    const allEdges = edges.get();
+    const adjAll = {};
+    const adjEeldab = {};
+    for (const e of allEdges) {
+        if (!adjAll[e.from])
+            adjAll[e.from] = [];
+        if (!adjAll[e.to])
+            adjAll[e.to] = [];
+        adjAll[e.from].push(e.to);
+        adjAll[e.to].push(e.from);
+        if (e.label === "eeldab") {
+            if (!adjEeldab[e.from])
+                adjEeldab[e.from] = [];
+            if (!adjEeldab[e.to])
+                adjEeldab[e.to] = [];
+            adjEeldab[e.from].push(e.to);
+            adjEeldab[e.to].push(e.from);
         }
-        nodes.update({ id: n.id, hidden: !visible });
+    }
+    let baseVisible = new Set();
+    if (!lastClickedNode || selectedDepth === 99) {
+        for (const n of allNodes)
+            baseVisible.add(n.id);
+    }
+    else {
+        const queue = [{ id: lastClickedNode.id, depth: 0 }];
+        const adj = onlyPrereq ? adjEeldab : adjAll;
+        baseVisible.add(lastClickedNode.id);
+        while (queue.length) {
+            const { id, depth } = queue.shift();
+            if (depth >= selectedDepth)
+                continue;
+            for (const nb of adj[id] || []) {
+                if (!baseVisible.has(nb)) {
+                    baseVisible.add(nb);
+                    queue.push({ id: nb, depth: depth + 1 });
+                }
+            }
+        }
+    }
+    const nodeHidden = {};
+    const nodeUpdates = allNodes.map((n) => {
+        var _a;
+        const visible = baseVisible.has(n.id) && ((_a = typeFilters[n.type]) !== null && _a !== void 0 ? _a : true);
+        nodeHidden[n.id] = !visible;
+        return { id: n.id, hidden: !visible };
     });
-    // Peida ka servad kui mõlemad otsad on peidetud
-    edges.get().forEach((e) => {
-        const fromVisible = !nodes.get(e.from).hidden;
-        const toVisible = !nodes.get(e.to).hidden;
-        edges.update({ id: e.id, hidden: !(fromVisible && toVisible) });
+    nodes.update(nodeUpdates);
+    const edgeUpdates = allEdges.map((e) => {
+        var _a;
+        const fromVis = !nodeHidden[e.from];
+        const toVis = !nodeHidden[e.to];
+        const typeOk = (_a = edgeFilters[e.label]) !== null && _a !== void 0 ? _a : true;
+        const prereqOk = !onlyPrereq || e.label === "eeldab";
+        return { id: e.id, hidden: !(fromVis && toVis && typeOk && prereqOk) };
     });
+    edges.update(edgeUpdates);
 }
