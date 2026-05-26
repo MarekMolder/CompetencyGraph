@@ -50,6 +50,10 @@
           <label><input type="checkbox" id="filterKnobit" checked onchange="recomputeVisibility()"> Knobitid</label>
           <label><input type="checkbox" id="filterOpivaljund" checked onchange="recomputeVisibility()"> Õpiväljundid</label>
           <label><input type="checkbox" id="filterMuu" checked onchange="recomputeVisibility()"> Tundmatu</label>
+          <label><input type="checkbox" id="filterAmetiKomp" checked onchange="recomputeVisibility()"> AmetiKompetentsiProfiilid</label>
+          <label><input type="checkbox" id="filterOppeaine" checked onchange="recomputeVisibility()"> Õppeained</label>
+          <label><input type="checkbox" id="filterValdkonnaKomp" checked onchange="recomputeVisibility()"> ValdkonnaKompetentsiProfiilid</label>
+          <label><input type="checkbox" id="filterOppekava" checked onchange="recomputeVisibility()"> Õppekavad</label>
         </div>
 
         <!-- Servade filtrid -->
@@ -62,12 +66,93 @@
           <label><input type="checkbox" id="filterEdgeTnEeldab" checked onchange="recomputeVisibility()"> Tn eeldab</label>
           <label><input type="checkbox" id="filterEdgeOvKnobit" checked onchange="recomputeVisibility()"> Sisaldab knobitit (ÕV)</label>
           <label><input type="checkbox" id="filterEdgeOvEeldab" checked onchange="recomputeVisibility()"> Eeldab (ÕV)</label>
+          <label><input type="checkbox" id="filterEdgeAineEeldab" checked onchange="recomputeVisibility()"> Eeldab (aine)</label>
+          <label><input type="checkbox" id="filterEdgeSisaldabOvAine" checked onchange="recomputeVisibility()"> Sisaldab ÕV (aine)</label>
+          <label><input type="checkbox" id="filterEdgeKoosnebKomp" checked onchange="recomputeVisibility()"> Koosneb komp</label>
+          <label><input type="checkbox" id="filterEdgeOppekavaOv" checked onchange="recomputeVisibility()"> Õppekava ÕV</label>
+          <label><input type="checkbox" id="filterEdgeSeotudOppekava" checked onchange="recomputeVisibility()"> Seotud õppekava</label>
         </div>
 
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Sulge</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD RELATION MODAL (beautiful version) -->
+<div class="modal fade" id="addRelationModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content rounded-4 shadow">
+
+      <form id="addRelationForm">
+
+        <div class="modal-header border-0 pb-0">
+          <h4 class="modal-title fw-bold text-primary">Lisa uus seos</h4>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+
+          <!-- KEY -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Seose KEY</label>
+            <input type="text" id="relKey" class="form-control rounded-3" placeholder="nt. KOMP_EELDAB_OSKREG" required>
+            <div class="form-text">
+              Näide: <code>KOMP_EELDAB_OSKREG</code>
+            </div>
+          </div>
+
+          <!-- PREDICATE -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Predicate URL</label>
+            <input type="text" id="relPredicate" class="form-control rounded-3"
+                   placeholder="nt. http://oppekava.edu.ee/a/Special:URIResolver/Property-3A..." required>
+            <div class="form-text">
+              Näide: <code>http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKompEeldabOskreg</code>
+            </div>
+          </div>
+
+          <!-- LABEL -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Label (graafis nähtav)</label>
+            <input type="text" id="relLabel" class="form-control rounded-3"
+                   placeholder="nt. eeldab (oskreg)" required>
+            <div class="form-text">
+              Näide: <code>eeldab (oskreg)</code>
+            </div>
+          </div>
+
+          <!-- COLOR -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Värvikood (#hex)</label>
+            <input type="text" id="relColor" class="form-control rounded-3" value="#999">
+            <div class="form-text">
+              Näide: <code>#ff5722</code> (oranž)
+            </div>
+          </div>
+
+          <!-- DIRECTION -->
+          <div class="mb-2">
+            <label class="form-label fw-semibold">Suund</label>
+            <select id="relDirection" class="form-select rounded-3">
+              <option value="child-to-parent">child-to-parent</option>
+              <option value="parent-to-child">parent-to-child</option>
+            </select>
+            <div class="form-text">
+              Näide: <code>child-to-parent</code>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer border-0 pt-0">
+          <button type="submit" class="btn btn-primary rounded-3 px-4">Salvesta</button>
+        </div>
+
+      </form>
+
     </div>
   </div>
 </div>
@@ -102,15 +187,60 @@
         </form>
     </div>
 
-    <div class="col-auto d-flex align-items-center gap-3">
-        <button class="btn filter-chip" data-bs-toggle="modal" data-bs-target="#filterModal">
-          <i class="bi bi-sliders"></i>
-        </button>
+    <div class="col-auto d-flex align-items-center gap-2">
+  <button class="btn filter-chip" data-bs-toggle="modal" data-bs-target="#filterModal">
+    <i class="bi bi-sliders"></i>
+  </button>
+
+      {% if logged_in %}
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-person-circle me-1"></i> Konto
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <button class="dropdown-item text-warning" onclick="syncGraph()">
+                <i class="bi bi-arrow-repeat me-2"></i> Sync Graph
+              </button>
+            </li>
+              <li>
+                  <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#addRelationModal">
+                    <i class="bi bi-node-plus me-2"></i> Lisa uus seos
+                  </button>
+              </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item text-danger" href="/logout">
+                <i class="bi bi-box-arrow-right me-2"></i> Logi välja
+              </a>
+            </li>
+          </ul>
+        </div>
+      {% else %}
+        <a href="/login" class="btn btn-outline-primary btn-sm d-flex align-items-center">
+          <i class="bi bi-box-arrow-in-right me-1"></i> Logi sisse
+        </a>
+      {% endif %}
     </div>
 
     </div>
   </div>
 </header>
+
+<div id="syncOverlay" class="sync-overlay d-none">
+  <div class="sync-card shadow-lg">
+    <div class="sync-spinner mb-3">
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+    </div>
+    <h5 id="syncStatus" class="fw-semibold mb-3 text-white">
+      <i class="bi bi-cpu me-2"></i>Käivitub...
+    </h5>
+    <div class="progress" style="width: 320px; height: 18px;">
+      <div id="syncProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+           style="width: 0%">0%</div>
+    </div>
+  </div>
+</div>
 
 <div class="container-fluid">
   <div class="row same-height">
@@ -196,6 +326,66 @@ document.addEventListener("DOMContentLoaded", function () {
     .catch(() => alert("Võrguviga salvestamisel"));
   });
 });
+
+async function syncGraph() {
+  if (!confirm("Kas soovid vana graafi kustutada ja luua uue?")) return;
+    document.getElementById("syncOverlay").classList.remove("d-none");
+
+  await fetch("/sync_graph", { method: "POST" });
+  let finished = false;
+
+  while (!finished) {
+    const res = await fetch("/sync_progress");
+    const data = await res.json();
+    const bar = document.getElementById("syncProgressBar");
+    const status = document.getElementById("syncStatus");
+
+    bar.style.width = `${Math.max(0, data.progress)}%`;
+    bar.textContent = data.progress > 0 ? `${data.progress}%` : "";
+    status.textContent = data.status || "";
+
+    if (data.progress >= 100 || data.progress < 0) {
+      finished = true;
+      await new Promise(r => setTimeout(r, 1000));
+    } else {
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+
+  document.getElementById("syncOverlay").classList.add("d-none");
+  alert("Graaf uuendatud!");
+  location.reload();
+}
 </script>
+
+<script>
+document.getElementById("addRelationForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+
+    const payload = {
+        key: document.getElementById("relKey").value.trim(),
+        predicate: document.getElementById("relPredicate").value.trim(),
+        label: document.getElementById("relLabel").value.trim(),
+        color: document.getElementById("relColor").value.trim(),
+        direction: document.getElementById("relDirection").value.trim()
+    };
+
+    const res = await fetch("/admin/add_relation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+
+    const out = await res.json();
+
+    if (out.success) {
+        alert("Seos lisatud! Käivita Sync Graph, et see graafis ilmuks.");
+        location.reload();
+    } else {
+        alert("Viga: " + out.error);
+    }
+});
+</script>
+
 </body>
 </html>

@@ -285,6 +285,32 @@ function formatExtraNodeInfo(node: any): string {
       <a href="${node.seotud_teema}" target="_blank">${node.seotud_teema.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</a>
     </p>`);
 
+  if (node.knobiti_liik)
+  info.push(`<p><strong>Knobiti liik:</strong>
+    <a href="${node.knobiti_liik}" target="_blank">
+      ${node.knobiti_liik.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}
+    </a>
+  </p>`);
+
+  if (node.oppeaine_eesmargid)
+    info.push(`<p><strong>Eesmärgid:</strong> ${node.oppeaine_eesmargid}</p>`);
+  if (node.oppeaine_maht_eap)
+    info.push(`<p><strong>Maht:</strong> ${node.oppeaine_maht_eap} EAP</p>`);
+  if (node.oppeasutus)
+    info.push(`<p><strong>Õppeasutus:</strong> <a href="${node.oppeasutus}" target="_blank">${node.oppeasutus.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</a></p>`);
+  if (node.course_code)
+    info.push(`<p><strong>Ainekood:</strong> ${node.course_code.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</p>`);
+
+  // --- Õppekava lisainfo ---
+  if (node.oppekava_nimetus_en)
+    info.push(`<p><strong>Nimetus (EN):</strong> ${node.oppekava_nimetus_en.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</p>`);
+  if (node.oppekava_identifier)
+    info.push(`<p><strong>Kood:</strong> ${node.oppekava_identifier.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</p>`);
+  if (node.oppekava_credits)
+    info.push(`<p><strong>Maht:</strong> ${node.oppekava_credits.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")} EAP</p>`);
+  if (node.oppekava_provider)
+    info.push(`<p><strong>Õppeasutus:</strong> <a href="${node.oppekava_provider}" target="_blank">${node.oppekava_provider.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</a></p>`);
+
   return info.join("");
 }
 
@@ -366,7 +392,11 @@ function recomputeVisibility(): void {
     tegevusnaitaja: getCheckbox("filterTn"),
     knobit: getCheckbox("filterKnobit"),
     opivaljund: getCheckbox("filterOpivaljund"),
-    muu: getCheckbox("filterMuu")
+    muu: getCheckbox("filterMuu"),
+    ametikompetents: getCheckbox("filterAmetiKomp"),
+    oppeaine: getCheckbox("filterOppeaine"),
+    valdkonnakomp: getCheckbox("filterValdkonnaKomp"),
+    oppekava: getCheckbox("filterOppekava"),
   };
 
   const edgeFilters: Record<string, boolean> = {
@@ -377,6 +407,11 @@ function recomputeVisibility(): void {
     "Tn eeldab": getCheckbox("filterEdgeTnEeldab"),
     "sisaldab knobitit (OV)": getCheckbox("filterEdgeOvKnobit"),
     "eeldab (OV)": getCheckbox("filterEdgeOvEeldab"),
+    "eeldab (aine)": getCheckbox("filterEdgeAineEeldab"),
+    "sisaldab \u00d5V (aine)": getCheckbox("filterEdgeSisaldabOvAine"),
+    "koosneb komp": getCheckbox("filterEdgeKoosnebKomp"),
+    "õppekava ÕV": getCheckbox("filterEdgeOppekavaOv"),
+    "seotud õppekava": getCheckbox("filterEdgeSeotudOppekava"),
   };
 
   const allNodes = nodes.get();

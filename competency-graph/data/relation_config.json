@@ -1,0 +1,98 @@
+{
+  "OSAOSKUS": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AosaOskus",
+    "label": "koosneb",
+    "color": "#ff3b30",
+    "direction": "child-to-parent"
+  },
+  "EELDUS_OSKUS": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AeeldusOskus",
+    "label": "eeldab",
+    "color": "#007aff",
+    "direction": "child-to-parent"
+  },
+  "KOMP_SISALDAB_TN": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKompSisaldabTn",
+    "label": "sisaldab Tn",
+    "color": "#34c759",
+    "direction": "child-to-parent"
+  },
+  "TN_SISALDAB_KNOBITIT": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnSisaldabKnobitit",
+    "label": "sisaldab knobitit",
+    "color": "#af52de",
+    "direction": "child-to-parent"
+  },
+  "TN_EELDAB": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnEeldab",
+    "label": "Tn eeldab",
+    "color": "#5856d6",
+    "direction": "child-to-parent"
+  },
+  "OV_SISALDAB_KNOBITIT": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AOvSisaldabKnobitit",
+    "label": "sisaldab knobitit (OV)",
+    "color": "#ffd60a",
+    "direction": "child-to-parent"
+  },
+  "OV_EELDAB": {
+    "predicate": "https://schema.edu.ee/eeldab",
+    "label": "eeldab (OV)",
+    "color": "#ff9500",
+    "direction": "child-to-parent"
+  },
+  "KNOBIT_EELDAB": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKnobitEeldab",
+    "label": "knobit eeldab",
+    "color": "#a55eea",
+    "direction": "child-to-parent"
+  },
+  "KNOBIT_SISALDAB": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKnobitSisaldab",
+    "label": "sisaldab knobitit",
+    "color": "#d980fa",
+    "direction": "child-to-parent"
+  },
+  "TN_MOODAB_OV": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnMoodabOv",
+    "label": "mõõdab ÕV",
+    "color": "#ffcc00",
+    "direction": "parent-to-child"
+  },
+  "KOMP_EELDAB_OSKREG": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKompEeldabOskreg",
+    "label": "eeldab (oskreg)",
+    "color": "#ff5722",
+    "direction": "child-to-parent"
+  },
+  "AINE_EELDAB_TASEMEOPE": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AAineEeldbTasemeOpe",
+    "label": "eeldab (aine)",
+    "color": "#00cec9",
+    "direction": "child-to-parent"
+  },
+  "OPTAOP_SISALDAB_OV": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AOpTaOpSisaldabOpivaljund",
+    "label": "sisaldab \u00d5V (aine)",
+    "color": "#1dd1a1",
+    "direction": "child-to-parent"
+  },
+  "AMKOPR_KOOSNEB_KOMP": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AAmKoPrKoosnebKomp",
+    "label": "koosneb komp",
+    "color": "#e84393",
+    "direction": "child-to-parent"
+  },
+  "OPPEKAVA_OPPVALJUND": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AOppekavaOppvaljund",
+    "label": "õppekava ÕV",
+    "color": "#d63031",
+    "direction": "parent-to-child"
+  },
+  "SEOTUD_OPPEKAVA": {
+    "predicate": "http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AseotudOppekava",
+    "label": "seotud õppekava",
+    "color": "#e17055",
+    "direction": "child-to-parent"
+  }
+}

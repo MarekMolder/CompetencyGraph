@@ -1,4 +1,6 @@
+import os
 import ssl
+import json
 
 from IPython.core.display import Math
 from pyvis import node
@@ -35,6 +37,10 @@ COMPETENCIES_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Kompetents"
 TEGEVUSNAITAJAD_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Tegevusnaitaja"
 KNOBITID_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Knobit"
 OPIVALJUNDID_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Opivaljund"
+AMETIKOMPETENTSIPROFIIL_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:AmetiKompetentsiProfiil"
+OPPEAINE_TASEMEOPE_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:OppeaineTasemeOpe"
+VALDKONNA_KOMPETENTSIPROFIIL_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:ValdkonnaKompetentsiProfiil"
+OPPEKAVA_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Oppekava"
 
 ESCO_LINK = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aesco_link")
 ESCO_VASTE = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aesco_vaste")
@@ -47,10 +53,25 @@ SEOTUD_OSKUS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AH
 SEOTUD = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aseotud")
 
 KOMP_SISALDAB_TN = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKompSisaldabTn")
+KOMP_EELDAB_OSKREG = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKompEeldabOskreg")
 TN_SISALDAB_KNOBITIT = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnSisaldabKnobitit")
 TN_EELDAB = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnEeldab")
 KNOBITI_LIIK = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AKnobitiLiik")
 OV_SISALDAB_KNOBITIT = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AOvSisaldabKnobitit")
+TN_MOODAB_OV = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnMoodabOv")
+
+KNOBIT_EELDAB = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKnobitEeldab")
+KNOBIT_SISALDAB = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKnobitSisaldab")
+
+OPPEAINE_EESMARGID = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AOppeaineEesmargid")
+OPPEAINE_MAHT_EAP = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AOppeaineMahtEAP")
+OPPEASUTUS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AOppeasutus")
+COURSE_CODE = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3ASchema-3AcourseCode")
+
+OPPEKAVA_NIMETUS_EN = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AOppekavaNimetusEn")
+SCHEMA_IDENTIFIER = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3ASchema-3Aidentifier")
+SCHEMA_NUM_CREDITS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3ASchema-3AnumberOfCredits")
+SCHEMA_PROVIDER = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3ASchema-3Aprovider")
 
 EELDAB = URIRef("https://schema.edu.ee/eeldab")
 KLASS = URIRef("https://schema.edu.ee/klass")
@@ -73,7 +94,8 @@ HTTP_TIMEOUT_SEC = 15
 RETRIES = 4                   # eksponentsiaalne backoff
 CACHE_TTL = 60 * 60 * 24 * 14 # 14 päeva
 
-CACHE = Cache("./rdf_cache")
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CACHE = Cache(os.path.join(_BASE_DIR, "rdf_cache"))
 SEM = asyncio.Semaphore(MAX_CONCURRENCY)
 RATE = AsyncLimiter(REQS_PER_SEC, time_period=1)
 HEADERS = {
@@ -95,10 +117,11 @@ SMW_HEX_RE = re.compile(r'-(?P<h>[0-9A-Fa-f]{2})')
 def decode_smw_hex(s: str) -> str:
     def repl(m):
         code = int(m.group('h'), 16)
-        # lubame dekodeerida ainult turvalised tähemärgid, nt koma
-        if code == 0x2C:  # ","
-            return ","
-        return m.group(0)  # muidu jäta alles "-XX"
+        ch = chr(code)
+        # dekodeeri kõik printitavad ASCII märgid (tühik kuni ~)
+        if 0x20 <= code <= 0x7E:
+            return ch
+        return m.group(0)  # mitte-printitavad jäta alles
     return SMW_HEX_RE.sub(repl, s)
 
 def fix_decimal_commas(xml_bytes: bytes) -> bytes:
@@ -137,7 +160,7 @@ def normalize_key(s: str) -> str:
     s = s.strip()
     s = s.replace(" ", "_")
     s = re.sub(r"_+", "_", s)
-    s = re.sub(r"\(\d+\)$", "", s)
+    s = re.sub(r"\(\d{1,2}\)$", "", s)
     return s
 
 def _skill_key(skill_name: str) -> str:
@@ -145,6 +168,14 @@ def _skill_key(skill_name: str) -> str:
 # =========================
 #       SCRAPER
 # =========================
+RELATION_CONFIG_PATH = os.path.join(_BASE_DIR, "data", "relation_config.json")
+
+def load_relation_config():
+    if os.path.exists(RELATION_CONFIG_PATH):
+        with open(RELATION_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
 def get_all_data(category_url: str):
     """
     Loeb kategoorialehelt ja kõigilt järgmistelt lehtedelt kõik elemendid.
@@ -282,108 +313,33 @@ async def _process_one(session: aiohttp.ClientSession, skill_name: str, depth: i
                 "kooliaste": str(g_rdf.value(subject_uri, KOOLIASTE, default="")),
                 "seotud_oppeaine": str(g_rdf.value(subject_uri, SEOTUD_OPPEAINE, default="")),
                 "seotud_teema": str(g_rdf.value(subject_uri, SEOTUD_TEEMA, default="")),
+                "knobiti_liik": str(g_rdf.value(subject_uri, KNOBITI_LIIK, default="")),
+                "oppeaine_eesmargid": str(g_rdf.value(subject_uri, OPPEAINE_EESMARGID, default="")),
+                "oppeaine_maht_eap": str(g_rdf.value(subject_uri, OPPEAINE_MAHT_EAP, default="")),
+                "oppeasutus": str(g_rdf.value(subject_uri, OPPEASUTUS, default="")),
+                "course_code": str(g_rdf.value(subject_uri, COURSE_CODE, default="")),
+                "oppekava_nimetus_en": str(g_rdf.value(subject_uri, OPPEKAVA_NIMETUS_EN, default="")),
+                "oppekava_identifier": str(g_rdf.value(subject_uri, SCHEMA_IDENTIFIER, default="")),
+                "oppekava_credits": str(g_rdf.value(subject_uri, SCHEMA_NUM_CREDITS, default="")),
+                "oppekava_provider": str(g_rdf.value(subject_uri, SCHEMA_PROVIDER, default="")),
             }
 
-        # 1) subskills
-        for o in g_rdf.objects(subject=subject_uri, predicate=OSAOSKUS):
-            sub_uri = str(o)
-            sub_name = uri_to_skill_name(sub_uri)
-            sub_key = _skill_key(sub_name)
-            if sub_key not in node["subskills"]:
-                node["subskills"].append(sub_key)
-            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if sub_key not in visited:
-                    visited.add(sub_key)
-                    await q.put((sub_name, depth + 1))
+        relation_config = load_relation_config()
 
-        # 2) üles: koosneja
-        for s in g_rdf.subjects(predicate=OSAOSKUS, object=subject_uri):
-            parent_name = uri_to_skill_name(str(s))
-            key = _skill_key(parent_name)
-            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if key not in visited:
-                    visited.add(key)
-                    await q.put((parent_name, depth + 1))
+        for rel_name, rel in relation_config.items():
+            predicate = URIRef(rel["predicate"])
 
-        # 3) alla: eeldusOskus
-        for o in g_rdf.objects(subject=subject_uri, predicate=SEOTUD_OSKUS):
-            pre_uri = str(o)
-            pre_name = uri_to_skill_name(pre_uri)
-            pre_key = _skill_key(pre_name)
-            if pre_key not in node["prerequisites"]:
-                node["prerequisites"].append(pre_key)
-            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if pre_key not in visited:
-                    visited.add(pre_key)
-                    await q.put((pre_name, depth + 1))
+            for o in g_rdf.objects(subject=subject_uri, predicate=predicate):
+                target_uri = str(o)
+                target_name = uri_to_skill_name(target_uri)
+                target_key = _skill_key(target_name)
 
-        # 4) üles: eeldusOskus
-        for s in g_rdf.subjects(predicate=SEOTUD_OSKUS, object=subject_uri):
-            parent_name = uri_to_skill_name(str(s))
-            key = _skill_key(parent_name)
-            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if key not in visited:
-                    visited.add(key)
-                    await q.put((parent_name, depth + 1))
+                node.setdefault(rel_name, []).append(target_key)
 
-        # 5) alla: kompetents sisaldab tegevusnäitajaid
-        for o in g_rdf.objects(subject=subject_uri, predicate=KOMP_SISALDAB_TN):
-            tn_uri = str(o)
-            tn_name = uri_to_skill_name(tn_uri)
-            tn_key = _skill_key(tn_name)
-            if tn_key not in node["tegevusnaitajad"]:
-                node["tegevusnaitajad"].append(tn_key)
-            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if tn_key not in visited:
-                    visited.add(tn_key)
-                    await q.put((tn_name, depth + 1))
-
-        # 6) alla: Tegevusnäitaja sisaldab knobiteid
-        for o in g_rdf.objects(subject=subject_uri, predicate=TN_SISALDAB_KNOBITIT):
-            kn_uri = str(o)
-            kn_name = uri_to_skill_name(kn_uri)
-            kn_key = _skill_key(kn_name)
-            if kn_key not in node["knobitid"]:
-                node["knobitid"].append(kn_key)
-            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if kn_key not in visited:
-                    visited.add(kn_key)
-                    await q.put((kn_name, depth + 1))
-
-        for o in g_rdf.objects(subject=subject_uri, predicate=TN_EELDAB):
-            tn_req_uri = str(o)
-            tn_req_name = uri_to_skill_name(tn_req_uri)
-            tn_req_key = _skill_key(tn_req_name)
-            if tn_req_key not in node.setdefault("tn_eeldab", []):
-                node["tn_eeldab"].append(tn_req_key)
-            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if tn_req_key not in visited:
-                    visited.add(tn_req_key)
-                    await q.put((tn_req_name, depth + 1))
-
-        # 7) Õpiväljund sisaldab knobiteid
-        for o in g_rdf.objects(subject=subject_uri, predicate=OV_SISALDAB_KNOBITIT):
-            ov_kn_uri = str(o)
-            ov_kn_name = uri_to_skill_name(ov_kn_uri)
-            ov_kn_key = _skill_key(ov_kn_name)
-            if ov_kn_key not in node.setdefault("ov_knobitid", []):
-                node["ov_knobitid"].append(ov_kn_key)
-            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if ov_kn_key not in visited:
-                    visited.add(ov_kn_key)
-                    await q.put((ov_kn_name, depth + 1))
-
-            # 8) Õpiväljund eeldab teist õpiväljundit
-        for o in g_rdf.objects(subject=subject_uri, predicate=EELDAB):
-            eeldab_uri = str(o)
-            eeldab_name = uri_to_skill_name(eeldab_uri)
-            eeldab_key = _skill_key(eeldab_name)
-            if eeldab_key not in node.setdefault("eeldab", []):
-                node["eeldab"].append(eeldab_key)
-            if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                if eeldab_key not in visited:
-                    visited.add(eeldab_key)
-                    await q.put((eeldab_name, depth + 1))
+                if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
+                    if target_key not in visited:
+                        visited.add(target_key)
+                        await q.put((target_name, depth + 1))
 
     except Exception as e:
         print(f"[warn] {skill_name}: {e}")
@@ -421,12 +377,11 @@ async def parse_all_data_async(data_list):
         await asyncio.gather(*workers, return_exceptions=True)
 
     sample = list(data.keys())
-    print(f"✅ Andmestikus olevad oskused: {sample}")
+    #print(f"✅ Andmestikus olevad oskused: {sample}")
     if "Probleemilahendus" not in data:
         print("❌ Probleemilahendus puudub data-s!")
 
     return data, depths
-
 # =========================
 #        MAIN
 # =========================

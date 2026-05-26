@@ -1,13 +1,3 @@
-"use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 const selectedSkills = new Set();
 let nodes, edges;
 let network;
@@ -40,24 +30,22 @@ function createSkillBadge(skill) {
     };
     return badge;
 }
-function drawGraph(skill) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const loading = document.getElementById("loading");
-        loading.style.display = "block";
-        try {
-            const response = yield fetch(`/graph?skill=${encodeURIComponent(skill)}`);
-            if (!response.ok)
-                throw new Error("Oskust ei leitud");
-            const responseData = yield response.json();
-            renderGraph(responseData.nodes, responseData.edges);
-        }
-        catch (error) {
-            showError("Oskust ei leitud");
-        }
-        finally {
-            loading.style.display = "none";
-        }
-    });
+async function drawGraph(skill) {
+    const loading = document.getElementById("loading");
+    loading.style.display = "block";
+    try {
+        const response = await fetch(`/graph?skill=${encodeURIComponent(skill)}`);
+        if (!response.ok)
+            throw new Error("Oskust ei leitud");
+        const responseData = await response.json();
+        renderGraph(responseData.nodes, responseData.edges);
+    }
+    catch (error) {
+        showError("Oskust ei leitud");
+    }
+    finally {
+        loading.style.display = "none";
+    }
 }
 function filterGraphBySearch(term) {
     const lower = term.toLowerCase();
@@ -255,6 +243,29 @@ function formatExtraNodeInfo(node) {
         info.push(`<p><strong>Seotud teema:</strong> 
       <a href="${node.seotud_teema}" target="_blank">${node.seotud_teema.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</a>
     </p>`);
+    if (node.knobiti_liik)
+        info.push(`<p><strong>Knobiti liik:</strong>
+    <a href="${node.knobiti_liik}" target="_blank">
+      ${node.knobiti_liik.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}
+    </a>
+  </p>`);
+    if (node.oppeaine_eesmargid)
+        info.push(`<p><strong>Eesmärgid:</strong> ${node.oppeaine_eesmargid}</p>`);
+    if (node.oppeaine_maht_eap)
+        info.push(`<p><strong>Maht:</strong> ${node.oppeaine_maht_eap} EAP</p>`);
+    if (node.oppeasutus)
+        info.push(`<p><strong>Õppeasutus:</strong> <a href="${node.oppeasutus}" target="_blank">${node.oppeasutus.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</a></p>`);
+    if (node.course_code)
+        info.push(`<p><strong>Ainekood:</strong> ${node.course_code.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</p>`);
+    // --- Õppekava lisainfo ---
+    if (node.oppekava_nimetus_en)
+        info.push(`<p><strong>Nimetus (EN):</strong> ${node.oppekava_nimetus_en.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</p>`);
+    if (node.oppekava_identifier)
+        info.push(`<p><strong>Kood:</strong> ${node.oppekava_identifier.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</p>`);
+    if (node.oppekava_credits)
+        info.push(`<p><strong>Maht:</strong> ${node.oppekava_credits.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")} EAP</p>`);
+    if (node.oppekava_provider)
+        info.push(`<p><strong>Õppeasutus:</strong> <a href="${node.oppekava_provider}" target="_blank">${node.oppekava_provider.replace("http://oppekava.edu.ee/a/Special:URIResolver/", "").replaceAll("_", " ")}</a></p>`);
     return info.join("");
 }
 // Init
@@ -325,7 +336,11 @@ function recomputeVisibility() {
         tegevusnaitaja: getCheckbox("filterTn"),
         knobit: getCheckbox("filterKnobit"),
         opivaljund: getCheckbox("filterOpivaljund"),
-        muu: getCheckbox("filterMuu")
+        muu: getCheckbox("filterMuu"),
+        ametikompetents: getCheckbox("filterAmetiKomp"),
+        oppeaine: getCheckbox("filterOppeaine"),
+        valdkonnakomp: getCheckbox("filterValdkonnaKomp"),
+        oppekava: getCheckbox("filterOppekava"),
     };
     const edgeFilters = {
         "eeldab": getCheckbox("filterEdgeEeldab"),
@@ -335,6 +350,11 @@ function recomputeVisibility() {
         "Tn eeldab": getCheckbox("filterEdgeTnEeldab"),
         "sisaldab knobitit (OV)": getCheckbox("filterEdgeOvKnobit"),
         "eeldab (OV)": getCheckbox("filterEdgeOvEeldab"),
+        "eeldab (aine)": getCheckbox("filterEdgeAineEeldab"),
+        "sisaldab \u00d5V (aine)": getCheckbox("filterEdgeSisaldabOvAine"),
+        "koosneb komp": getCheckbox("filterEdgeKoosnebKomp"),
+        "õppekava ÕV": getCheckbox("filterEdgeOppekavaOv"),
+        "seotud õppekava": getCheckbox("filterEdgeSeotudOppekava"),
     };
     const allNodes = nodes.get();
     const allEdges = edges.get();

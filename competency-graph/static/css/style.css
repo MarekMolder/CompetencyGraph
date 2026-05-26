@@ -317,3 +317,54 @@ header {
   border-color: #007aff;
   box-shadow: 0 0 0 2px rgba(0,122,255,0.25);
 }
+
+/* --- Sync Overlay --- */
+.sync-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 20, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 4000;
+  transition: opacity 0.3s ease;
+}
+
+.sync-overlay.d-none {
+  display: none;
+}
+
+.sync-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  padding: 2.5rem 3rem;
+  text-align: center;
+  color: #fff;
+  min-width: 400px;
+  max-width: 90%;
+  animation: popIn 0.25s ease-out;
+  backdrop-filter: blur(12px);
+}
+
+.sync-spinner .spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
+
+.progress {
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+@keyframes popIn {
+  from { transform: translateY(10px) scale(0.97); opacity: 0; }
+  to { transform: translateY(0); scale: 1; opacity: 1; }
+}
+
+#addRelationModal .modal-dialog {
+margin-top: 80px !important;   /* suurenda/ka vähenda kui soovid */
+}
+
