@@ -97,11 +97,15 @@ function renderGraph(nodesData: any[], edgesData: any[]): void {
   };
 
   nodes = new vis.DataSet(
-    nodesData.map(n => ({
-      ...n,
-      color: n.color || defaultNodeColor,
-      borderWidth: n.borderWidth ?? 1
-    }))
+    nodesData.map(n => {
+      const origColor = n.color || defaultNodeColor;
+      return {
+        ...n,
+        color: origColor,
+        originalColor: origColor,
+        borderWidth: n.borderWidth ?? 1
+      };
+    })
   );
 
   edges = new vis.DataSet(
@@ -159,12 +163,31 @@ function renderGraph(nodesData: any[], edgesData: any[]): void {
 
   network.on("hoverNode", (params: any) => !isPanelPinned && updateNodeInfo(nodes.get(params.node)));
   network.on("blurNode", hideNodeInfo);
+  // Keep physics simulating even when the tab is in background.
+  // Browsers throttle requestAnimationFrame (vis.js's animation loop) in hidden
+  // tabs, so we drive physics manually via a Web Worker (workers are not throttled).
+  const workerSrc = "setInterval(() => self.postMessage(0), 30);";
+  const workerBlob = new Blob([workerSrc], { type: "application/javascript" });
+  const bgWorker = new Worker(URL.createObjectURL(workerBlob));
+  bgWorker.onmessage = () => {
+    if (document.hidden && network && network.physics && !network.physics.stabilized) {
+      try { network.physics.physicsTick(); } catch (e) { /* ignore */ }
+    }
+  };
+  // Once physics has truly settled, freeze the layout and stop the worker.
+  network.once("stabilized", () => {
+    network.setOptions({ physics: false });
+    bgWorker.terminate();
+  });
 }
 
 function resetNodeStyle(id: string): void {
+  const n = nodes.get(id);
+  const orig = (n && n.originalColor) ? n.originalColor :
+    { background: "#ffffff", border: "#007bff", highlight: { background: "#e0f0ff", border: "#0056b3" } };
   nodes.update({
     id,
-    color: { background: "#ffffff", border: "#007bff", highlight: { background: "#e0f0ff", border: "#0056b3" } },
+    color: orig,
     borderWidth: 1
   });
 }
@@ -209,11 +232,11 @@ function getGraphOptions(): any {
       keyboard: false,
       zoomView: true
     },
-    layout: { improvedLayout: true },
+    layout: { improvedLayout: false },
     physics: {
       enabled: true,
       solver: "forceAtlas2Based",
-      stabilization: { enabled: true, iterations: 250, updateInterval: 25, fit: true },
+      stabilization: { enabled: false, iterations: 250, updateInterval: 25, fit: true },
       forceAtlas2Based: {
         gravitationalConstant: -45,  // väiksem tõuge → klastrid lähemal
         centralGravity: 0.004,       // tugevam tõmme keskpunkti

@@ -1,11 +1,8 @@
 Flask
-beautifulsoup4
 networkx
 pyvis
-rdflib
 requests
 aiohttp
-diskcache
 aiolimiter
 pytest
 pytest-asyncio
