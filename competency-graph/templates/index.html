@@ -157,7 +157,7 @@
   </div>
 </div>
 
-<header class="py-3 mb-4">
+<header id="appHeader" class="py-3">
   <div class="container-fluid px-4">
     <div class="row align-items-center justify-content-between g-2">
 
@@ -167,6 +167,9 @@
         <img src="/static/img/oppekava-logo.png" alt="Logo" class="logo-img me-2">
         <span class="logo-text">Graaf</span>
       </a>
+      <button id="btnEditSelection" type="button" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Muuda valikut
+      </button>
         <!--
         <a href="/ametikohad" class="btn btn-outline-secondary btn-sm">Ametikohad</a>
         <button class="btn btn-success btn-sm" type="button" onclick="showCreateForm()">
@@ -176,7 +179,7 @@
     </div>
 
       <!-- Kesk: otsing -->
-    <div class="col-md col-lg-7">
+    <div class="col-md col-lg-7" id="searchCol">
         <form class="d-flex" id="searchForm" role="search">
             <div class="dropdown w-100 position-relative">
                 <input class="form-control" id="skillInput" placeholder="Sisesta otsitav..." autocomplete="off">
@@ -242,7 +245,48 @@
   </div>
 </div>
 
-<div class="container-fluid">
+<!-- ===================== STARDIVALIKU EKRAAN ===================== -->
+<div id="startScreen">
+  <div class="start-card">
+    <div class="start-head">
+      <h1>Mida soovid graafil näha?</h1>
+      <p>Vali kiirvalik või sea ise täpselt, millised tipud ja seosed graafile kuvatakse.</p>
+    </div>
+
+    <div class="start-body">
+      <div class="section-label">Kiirvalikud</div>
+      <div class="preset-grid" id="presetGrid">
+        <div class="preset" data-preset="ov"><i class="ic bi bi-mortarboard"></i><span class="name">Õpiväljundid (OV)</span></div>
+        <div class="preset" data-preset="tn"><i class="ic bi bi-list-check"></i><span class="name">Tegevusnäitajad (TN)</span></div>
+        <div class="preset" data-preset="knobit"><i class="ic bi bi-puzzle"></i><span class="name">Knobitid</span></div>
+        <div class="preset" data-preset="ovtnknobit"><i class="ic bi bi-layers"></i><span class="name">OV + TN + Knobit</span></div>
+        <div class="preset" data-preset="oskused"><i class="ic bi bi-stars"></i><span class="name">Oskused</span></div>
+        <div class="preset" data-preset="profiilid"><i class="ic bi bi-person-badge"></i><span class="name">Profiilid</span></div>
+        <div class="preset" data-preset="koik"><i class="ic bi bi-diagram-3"></i><span class="name">Kõik</span></div>
+      </div>
+
+      <button class="advanced-toggle" id="advToggle" type="button">
+        <i class="bi bi-sliders"></i> Täpsem valik
+        <i class="bi bi-chevron-down" id="advChevron"></i>
+      </button>
+
+      <div class="advanced-panel" id="advPanel" style="display:none;">
+        <div class="section-label" style="margin-top:0;">Tipud (sõlmed)</div>
+        <div class="type-grid" id="typeGrid"></div>
+        <div class="section-label">Seosed (kaared)</div>
+        <div class="edge-grid" id="edgeGrid"></div>
+      </div>
+    </div>
+
+    <div class="start-foot">
+      <button class="btn-show" id="btnShow" disabled>
+        <i class="bi bi-diagram-3 me-1"></i> Näita graafi
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid" id="graphContainer" style="display:none;">
   <div class="row same-height">
 
     <div id="loading">Laen graafi...</div>
@@ -385,6 +429,180 @@ document.getElementById("addRelationForm").addEventListener("submit", async func
         alert("Viga: " + out.error);
     }
 });
+</script>
+
+<script>
+// ===================== STARDIVALIKU LOOGIKA =====================
+(function () {
+  // Tipu tüübid: id = graafi node.type; filter = filtri-modaali checkbox'i id; värv = graafi värv
+  const NODE_TYPES = [
+    { id: "opivaljund",      filter: "filterOpivaljund",     label: "Õpiväljundid (OV)",             color: "#e1b12c" },
+    { id: "tegevusnaitaja",  filter: "filterTn",             label: "Tegevusnäitajad (TN)",          color: "#00b894" },
+    { id: "knobit",          filter: "filterKnobit",         label: "Knobitid",                      color: "#6c5ce7" },
+    { id: "oskus",           filter: "filterOskus",          label: "Oskused",                       color: "#0984e3" },
+    { id: "kompetents",      filter: "filterKompetents",     label: "Kompetentsid",                  color: "#ff7f11" },
+    { id: "ametikompetents", filter: "filterAmetiKomp",      label: "AmetiKompetentsiProfiilid",     color: "#e84393" },
+    { id: "valdkonnakomp",   filter: "filterValdkonnaKomp",  label: "ValdkonnaKompetentsiProfiilid", color: "#2d6a4f" },
+    { id: "oppeaine",        filter: "filterOppeaine",       label: "Õppeained",                     color: "#00cec9" },
+    { id: "oppekava",        filter: "filterOppekava",       label: "Õppekavad",                     color: "#d63031" },
+    { id: "muu",             filter: "filterMuu",            label: "Tundmatu",                      color: "#636e72" },
+  ];
+
+  // Seosed: filter = filtri-modaali checkbox'i id (need 12 vastavad modaali serva-filtritele 1:1)
+  const EDGE_TYPES = [
+    { filter: "filterEdgeEeldab",          label: "eeldab",                 color: "#007aff" },
+    { filter: "filterEdgeKoosneb",         label: "koosneb",                color: "#ff3b30" },
+    { filter: "filterEdgeSisaldabTn",      label: "sisaldab Tn",            color: "#34c759" },
+    { filter: "filterEdgeSisaldabKnobitit",label: "sisaldab knobitit",      color: "#af52de" },
+    { filter: "filterEdgeTnEeldab",        label: "Tn eeldab",              color: "#5856d6" },
+    { filter: "filterEdgeOvKnobit",        label: "sisaldab knobitit (OV)", color: "#ffd60a" },
+    { filter: "filterEdgeOvEeldab",        label: "eeldab (OV)",            color: "#ff9500" },
+    { filter: "filterEdgeAineEeldab",      label: "eeldab (aine)",          color: "#00cec9" },
+    { filter: "filterEdgeSisaldabOvAine",  label: "sisaldab ÕV (aine)",     color: "#1dd1a1" },
+    { filter: "filterEdgeKoosnebKomp",     label: "koosneb komp",           color: "#e84393" },
+    { filter: "filterEdgeOppekavaOv",      label: "õppekava ÕV",            color: "#d63031" },
+    { filter: "filterEdgeSeotudOppekava",  label: "seotud õppekava",        color: "#e17055" },
+  ];
+
+  // Presetid → tipu tüüpide id-d
+  const PRESETS = {
+    ov:         ["opivaljund"],
+    tn:         ["tegevusnaitaja"],
+    knobit:     ["knobit"],
+    ovtnknobit: ["opivaljund", "tegevusnaitaja", "knobit"],
+    oskused:    ["oskus", "kompetents"],
+    profiilid:  ["ametikompetents", "valdkonnakomp", "kompetents"],
+    koik:       NODE_TYPES.map(function (t) { return t.id; }),
+  };
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const typeGrid = document.getElementById("typeGrid");
+    const edgeGrid = document.getElementById("edgeGrid");
+    const btnShow = document.getElementById("btnShow");
+    const presets = Array.prototype.slice.call(document.querySelectorAll(".preset"));
+
+    // Ehita tipu checkbox'id
+    NODE_TYPES.forEach(function (t) {
+      const el = document.createElement("label");
+      el.className = "type-check";
+      el.innerHTML = '<input type="checkbox" data-type="' + t.id + '">' +
+        '<span class="swatch" style="background:' + t.color + '"></span> ' + t.label;
+      typeGrid.appendChild(el);
+    });
+    // Ehita serva checkbox'id (vaikimisi kõik valitud)
+    EDGE_TYPES.forEach(function (e) {
+      const el = document.createElement("label");
+      el.className = "edge-check";
+      el.innerHTML = '<input type="checkbox" data-edge="' + e.filter + '" checked>' +
+        '<span class="edge-line" style="background:' + e.color + '"></span> ' + e.label;
+      edgeGrid.appendChild(el);
+    });
+
+    const typeChecks = Array.prototype.slice.call(document.querySelectorAll('input[data-type]'));
+    const edgeChecks = Array.prototype.slice.call(document.querySelectorAll('input[data-edge]'));
+
+    function selectedTypes() {
+      return typeChecks.filter(function (c) { return c.checked; }).map(function (c) { return c.dataset.type; });
+    }
+
+    function refresh() {
+      const sel = selectedTypes();
+      const selSet = {};
+      sel.forEach(function (x) { selSet[x] = true; });
+      presets.forEach(function (p) {
+        const want = PRESETS[p.dataset.preset];
+        const match = want.length === sel.length && want.every(function (x) { return selSet[x]; });
+        p.classList.toggle("active", match);
+      });
+      btnShow.disabled = sel.length === 0;
+    }
+
+    // Preset → checkbox'id
+    presets.forEach(function (p) {
+      p.addEventListener("click", function () {
+        const want = {};
+        PRESETS[p.dataset.preset].forEach(function (x) { want[x] = true; });
+        typeChecks.forEach(function (c) { c.checked = !!want[c.dataset.type]; });
+        refresh();
+      });
+    });
+    typeChecks.forEach(function (c) { c.addEventListener("change", refresh); });
+    edgeChecks.forEach(function (c) { c.addEventListener("change", refresh); });
+
+    // Täpsema paneeli avamine
+    const advPanel = document.getElementById("advPanel");
+    const advChevron = document.getElementById("advChevron");
+    document.getElementById("advToggle").addEventListener("click", function () {
+      const open = advPanel.style.display === "none";
+      advPanel.style.display = open ? "block" : "none";
+      advChevron.className = open ? "bi bi-chevron-up" : "bi bi-chevron-down";
+    });
+
+    // Sünkroonisus filtri-modaaliga (mida recomputeVisibility loeb)
+    function applySelectionToModal() {
+      typeChecks.forEach(function (c) {
+        const meta = NODE_TYPES.find(function (t) { return t.id === c.dataset.type; });
+        const modalEl = document.getElementById(meta.filter);
+        if (modalEl) modalEl.checked = c.checked;
+      });
+      edgeChecks.forEach(function (c) {
+        const modalEl = document.getElementById(c.dataset.edge);
+        if (modalEl) modalEl.checked = c.checked;
+      });
+    }
+    function syncSelectionFromModal() {
+      typeChecks.forEach(function (c) {
+        const meta = NODE_TYPES.find(function (t) { return t.id === c.dataset.type; });
+        const modalEl = document.getElementById(meta.filter);
+        if (modalEl) c.checked = modalEl.checked;
+      });
+      edgeChecks.forEach(function (c) {
+        const modalEl = document.getElementById(c.dataset.edge);
+        if (modalEl) c.checked = modalEl.checked;
+      });
+      refresh();
+    }
+
+    // Vaadete vahetus — header jääb alati nähtavaks; stardivaates peidetakse
+    // ainult otsing ja "Muuda valikut" nupp.
+    const startScreen = document.getElementById("startScreen");
+    const graphContainer = document.getElementById("graphContainer");
+    const searchCol = document.getElementById("searchCol");
+    const btnEdit = document.getElementById("btnEditSelection");
+
+    function showGraphView() {
+      startScreen.style.display = "none";
+      graphContainer.style.display = "";
+      if (searchCol) searchCol.style.display = "";
+      if (btnEdit) btnEdit.style.display = "";
+    }
+    function showStartView() {
+      graphContainer.style.display = "none";
+      startScreen.style.display = "flex";
+      if (searchCol) searchCol.style.display = "none";
+      if (btnEdit) btnEdit.style.display = "none";
+    }
+
+    // "Näita graafi"
+    btnShow.addEventListener("click", function () {
+      if (btnShow.disabled) return;
+      applySelectionToModal();
+      showGraphView();
+      // drawGraph ja recomputeVisibility on graph.js globaalfunktsioonid
+      drawGraph("").then(function () { recomputeVisibility(); });
+    });
+
+    // "Muuda valikut"
+    document.getElementById("btnEditSelection").addEventListener("click", function () {
+      syncSelectionFromModal();
+      showStartView();
+    });
+
+    // Algseis — stardivaade (peidab otsingu ja "Muuda valikut")
+    showStartView();
+    refresh();
+  });
+})();
 </script>
 
 </body>

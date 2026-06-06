@@ -223,11 +223,11 @@ def sync_graph():
             with open(SYNC_STATUS_PATH, "w", encoding="utf-8") as f:
                 json.dump({"progress": 0, "status": "🔄 Käivitan graafi uuenduse..."}, f)
 
-            # 1️⃣ Kustuta vana JSON cache
-            if os.path.exists(GRAPH_CACHE_PATH):
-                os.remove(GRAPH_CACHE_PATH)
+            # 1️⃣ Säilita vana cache kuni uus on edukalt valmis.
+            # (Ära kustuta ette — kui ehitus kukub, jääks server ilma graafita.
+            # Lõpus kirjutame faili üle ainult eduka ehituse korral.)
             with open(SYNC_STATUS_PATH, "w", encoding="utf-8") as f:
-                json.dump({"progress": 5, "status": "🗑️ Vana cache kustutatud..."}, f)
+                json.dump({"progress": 5, "status": "🔄 Valmistan uut graafi (vana säilib)..."}, f)
 
             # 2️⃣ Lae RDF andmete kategooriad
             urls = [

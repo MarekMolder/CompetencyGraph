@@ -1,3 +1,13 @@
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 const selectedSkills = new Set();
 let nodes, edges;
 let network;
@@ -30,22 +40,24 @@ function createSkillBadge(skill) {
     };
     return badge;
 }
-async function drawGraph(skill) {
-    const loading = document.getElementById("loading");
-    loading.style.display = "block";
-    try {
-        const response = await fetch(`/graph?skill=${encodeURIComponent(skill)}`);
-        if (!response.ok)
-            throw new Error("Oskust ei leitud");
-        const responseData = await response.json();
-        renderGraph(responseData.nodes, responseData.edges);
-    }
-    catch (error) {
-        showError("Oskust ei leitud");
-    }
-    finally {
-        loading.style.display = "none";
-    }
+function drawGraph(skill) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const loading = document.getElementById("loading");
+        loading.style.display = "block";
+        try {
+            const response = yield fetch(`/graph?skill=${encodeURIComponent(skill)}`);
+            if (!response.ok)
+                throw new Error("Oskust ei leitud");
+            const responseData = yield response.json();
+            renderGraph(responseData.nodes, responseData.edges);
+        }
+        catch (error) {
+            showError("Oskust ei leitud");
+        }
+        finally {
+            loading.style.display = "none";
+        }
+    });
 }
 function filterGraphBySearch(term) {
     const lower = term.toLowerCase();
@@ -80,7 +92,7 @@ function renderGraph(nodesData, edgesData) {
     nodes = new vis.DataSet(nodesData.map(n => {
         var _a;
         const origColor = n.color || defaultNodeColor;
-        return (Object.assign(Object.assign({}, n), { color: origColor, originalColor: origColor, borderWidth: (_a = n.borderWidth) !== null && _a !== void 0 ? _a : 1 }));
+        return Object.assign(Object.assign({}, n), { color: origColor, originalColor: origColor, borderWidth: (_a = n.borderWidth) !== null && _a !== void 0 ? _a : 1 });
     }));
     edges = new vis.DataSet(edgesData.map(e => (Object.assign(Object.assign({}, e), { color: e.color || "#cccccc" }))));
     network = new vis.Network(container, { nodes, edges }, getGraphOptions());
@@ -136,18 +148,24 @@ function renderGraph(nodesData, edgesData) {
     const bgWorker = new Worker(URL.createObjectURL(workerBlob));
     bgWorker.onmessage = () => {
         if (document.hidden && network && network.physics && !network.physics.stabilized) {
-            try { network.physics.physicsTick(); } catch (e) { /* ignore */ }
+            try {
+                network.physics.physicsTick();
+            }
+            catch (e) { /* ignore */ }
         }
     };
     // Once physics has truly settled, freeze the layout and stop the worker.
     network.once("stabilized", () => {
         network.setOptions({ physics: false });
         bgWorker.terminate();
+        // Zoomi vaade sisule — väheste tippudega valik ei jää üle ekraani laiali.
+        network.fit({ animation: { duration: 400, easingFunction: "easeInOutQuad" } });
     });
 }
 function resetNodeStyle(id) {
     const n = nodes.get(id);
-    const orig = (n && n.originalColor) ? n.originalColor : { background: "#ffffff", border: "#007bff", highlight: { background: "#e0f0ff", border: "#0056b3" } };
+    const orig = (n && n.originalColor) ? n.originalColor :
+        { background: "#ffffff", border: "#007bff", highlight: { background: "#e0f0ff", border: "#0056b3" } };
     nodes.update({
         id,
         color: orig,
@@ -198,10 +216,10 @@ function getGraphOptions() {
             solver: "forceAtlas2Based",
             stabilization: { enabled: false, iterations: 250, updateInterval: 25, fit: true },
             forceAtlas2Based: {
-                gravitationalConstant: -45, // väiksem tõuge → klastrid lähemal
-                centralGravity: 0.004, // tugevam tõmme keskpunkti
-                springLength: 130, // veidi lühemad ühendused
-                springConstant: 0.025, // pisut jäigemad ühendused
+                gravitationalConstant: -35, // väiksem tõuge → klastrid lähemal
+                centralGravity: 0.015, // tugevam tõmme keskpunkti → kompaktsem (eriti väheste tippudega)
+                springLength: 95, // lühemad ühendused
+                springConstant: 0.03, // pisut jäigemad ühendused
                 avoidOverlap: 0.7 // hoiab sildid loetavana, aga mitte üle paisutatult
             },
             maxVelocity: 25,
@@ -337,7 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
             filterGraphBySearch(label);
         }
     });
-    drawGraph(""); // lae alguses
+    // Graafi ei laeta automaatselt — stardivalik kutsub drawGraph() välja "Näita graafi" nupul.
 });
 function getCheckbox(id, def = true) {
     const el = document.getElementById(id);

@@ -178,6 +178,8 @@ function renderGraph(nodesData: any[], edgesData: any[]): void {
   network.once("stabilized", () => {
     network.setOptions({ physics: false });
     bgWorker.terminate();
+    // Zoomi vaade sisule — väheste tippudega valik ei jää üle ekraani laiali.
+    network.fit({ animation: { duration: 400, easingFunction: "easeInOutQuad" } });
   });
 }
 
@@ -238,10 +240,10 @@ function getGraphOptions(): any {
       solver: "forceAtlas2Based",
       stabilization: { enabled: false, iterations: 250, updateInterval: 25, fit: true },
       forceAtlas2Based: {
-        gravitationalConstant: -45,  // väiksem tõuge → klastrid lähemal
-        centralGravity: 0.004,       // tugevam tõmme keskpunkti
-        springLength: 130,           // veidi lühemad ühendused
-        springConstant: 0.025,       // pisut jäigemad ühendused
+        gravitationalConstant: -35,  // väiksem tõuge → klastrid lähemal
+        centralGravity: 0.015,       // tugevam tõmme keskpunkti → kompaktsem (eriti väheste tippudega)
+        springLength: 95,            // lühemad ühendused
+        springConstant: 0.03,        // pisut jäigemad ühendused
         avoidOverlap: 0.7            // hoiab sildid loetavana, aga mitte üle paisutatult
       },
       maxVelocity: 25,
@@ -394,7 +396,7 @@ form.onsubmit = (e) => {
     }
   });
 
-  drawGraph(""); // lae alguses
+  // Graafi ei laeta automaatselt — stardivalik kutsub drawGraph() välja "Näita graafi" nupul.
 });
 
 function getCheckbox(id: string, def = true): boolean {

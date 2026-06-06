@@ -15,6 +15,10 @@ REQS_PER_SEC = 8
 HTTP_TIMEOUT = 30
 RETRIES = 4
 PAGE_SIZE = 500
+# Category-level retries (on top of per-HTTP-request RETRIES). A transient
+# upstream error during the parallel burst must not silently drop a whole
+# category (this intermittently lost the small "oppekava" category).
+CATEGORY_RETRIES = 3
 
 _semaphore = asyncio.Semaphore(MAX_CONCURRENCY)
 _rate = AsyncLimiter(REQS_PER_SEC, time_period=1)
@@ -352,12 +356,28 @@ async def parse_all_data_async(data_list: list) -> tuple:
 
     async with aiohttp.ClientSession() as session:
         async def fetch_one(cat_name: str, node_type: str):
+            """Fetch one category, retrying the whole category on failure.
+
+            Returns (cat_name, nodes_or_None). None signals the category could
+            not be loaded after CATEGORY_RETRIES attempts so the caller can
+            fail loudly instead of silently dropping the whole category.
+            """
             attrs = ATTRIBUTES_BY_TYPE.get(node_type, [])
-            try:
-                return await fetch_category(cat_name, attrs, node_type, session=session)
-            except Exception as e:
-                print(f"[warn] fetch_category({cat_name}) failed: {e}")
-                return {}
+            last_err = None
+            for attempt in range(CATEGORY_RETRIES):
+                try:
+                    nodes = await fetch_category(
+                        cat_name, attrs, node_type, session=session)
+                    return cat_name, nodes
+                except Exception as e:
+                    last_err = e
+                    print(f"[warn] fetch_category({cat_name}) attempt "
+                          f"{attempt + 1}/{CATEGORY_RETRIES} failed: {e}")
+                    if attempt < CATEGORY_RETRIES - 1:
+                        await asyncio.sleep(0.5 * (2 ** attempt))
+            print(f"[error] fetch_category({cat_name}) gave up after "
+                  f"{CATEGORY_RETRIES} attempts: {last_err}")
+            return cat_name, None
 
         tasks = [
             fetch_one(cat_name, node_type)
@@ -365,7 +385,14 @@ async def parse_all_data_async(data_list: list) -> tuple:
         ]
         results = await asyncio.gather(*tasks)
 
-    for partial in results:
+    failed = [cat_name for cat_name, nodes in results if nodes is None]
+    if failed:
+        # Never persist / serve an incomplete graph: surface the failure so the
+        # caller keeps the previous (complete) cache instead of overwriting it.
+        raise RuntimeError(
+            "Failed to load categories after retries: " + ", ".join(failed))
+
+    for _cat_name, partial in results:
         for raw_title, node in partial.items():
             merged[normalize_key(raw_title)] = node
 

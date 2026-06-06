@@ -357,5 +357,42 @@ class TestParseFixture(unittest.TestCase):
             self.assertIn("kooliaste", node)
 
 
+class TestParseAllDataResilience(unittest.IsolatedAsyncioTestCase):
+    """Safeguard: a transient per-category fetch failure must NOT silently
+    drop the whole category (which intermittently lost e.g. the small
+    'oppekava' category). Retry the category; if it still fails, raise loudly
+    so callers never persist an incomplete graph."""
+
+    @patch("logic.ask_api.asyncio.sleep", new_callable=AsyncMock)
+    @patch("logic.ask_api.fetch_category", new_callable=AsyncMock)
+    async def test_transient_category_failure_recovers(self, mock_fetch, _sleep):
+        attempts = {"n": 0}
+
+        async def fake_fetch(category, attrs, node_type, session=None):
+            if node_type == "oppekava":
+                attempts["n"] += 1
+                if attempts["n"] == 1:
+                    raise RuntimeError("transient 503")
+                return {"Oppekava_X": {"label": "X"}}
+            return {}
+
+        mock_fetch.side_effect = fake_fetch
+        data, _ = await ask_api.parse_all_data_async(["Oppekava_X"])
+        self.assertIn("Oppekava_X", data)
+        self.assertGreaterEqual(attempts["n"], 2, "category was not retried")
+
+    @patch("logic.ask_api.asyncio.sleep", new_callable=AsyncMock)
+    @patch("logic.ask_api.fetch_category", new_callable=AsyncMock)
+    async def test_persistent_category_failure_raises(self, mock_fetch, _sleep):
+        async def fake_fetch(category, attrs, node_type, session=None):
+            if node_type == "oppekava":
+                raise RuntimeError("upstream down")
+            return {"Skill_A": {"label": "A"}}
+
+        mock_fetch.side_effect = fake_fetch
+        with self.assertRaises(Exception):
+            await ask_api.parse_all_data_async(["Skill_A"])
+
+
 if __name__ == "__main__":
     unittest.main()
