@@ -11,7 +11,7 @@ from logic.graph_utils import (parse_all_data_async, get_all_data,
     SKILLS_URL, COMPETENCIES_URL, TEGEVUSNAITAJAD_URL, KNOBITID_URL,
     OPIVALJUNDID_URL, AMETIKOMPETENTSIPROFIIL_URL, OPPEAINE_TASEMEOPE_URL,
     VALDKONNA_KOMPETENTSIPROFIIL_URL, OPPEKAVA_URL, normalize_key,
-    load_relation_config, CACHE)
+    load_relation_config)
 
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -39,8 +39,9 @@ def get_graph_data():
     limit_recursion = request.args.get("limit_recursion", "false").lower() == "true"
     max_depth = int(request.args.get("max_depth", 9999999))
 
-    graph_utils.LIMIT_RECURSION = limit_recursion
-    graph_utils.MAX_DEPTH = max_depth
+    from logic import ask_api
+    ask_api.LIMIT_RECURSION = limit_recursion
+    ask_api.MAX_DEPTH = max_depth
 
     try:
         if not skill:
@@ -67,13 +68,19 @@ def get_graph_data():
             oppekava_set = {normalize_key(o) for o in oppekavad}
 
         else:
+            # Single-skill view — also load category memberships so node
+            # coloring works. Without these, all nodes render as "Tundmatu"
+            # (gray) because their type bucket can't be identified.
             data_list = [normalize_key(skill)]
-            skills_set = set()
-            competencies_set = set()
-            tn_set = set()
-            knobit_set = set()
-            opivaljund_set = set()
-            oppekava_set = set()
+            skills_set = {normalize_key(s) for s in get_all_data(SKILLS_URL)}
+            competencies_set = {normalize_key(c) for c in get_all_data(COMPETENCIES_URL)}
+            tn_set = {normalize_key(t) for t in get_all_data(TEGEVUSNAITAJAD_URL)}
+            knobit_set = {normalize_key(k) for k in get_all_data(KNOBITID_URL)}
+            opivaljund_set = {normalize_key(o) for o in get_all_data(OPIVALJUNDID_URL)}
+            ametikompetents_set = {normalize_key(a) for a in get_all_data(AMETIKOMPETENTSIPROFIIL_URL)}
+            oppeaine_set = {normalize_key(o) for o in get_all_data(OPPEAINE_TASEMEOPE_URL)}
+            valdkonna_komp_set = {normalize_key(v) for v in get_all_data(VALDKONNA_KOMPETENTSIPROFIIL_URL)}
+            oppekava_set = {normalize_key(o) for o in get_all_data(OPPEKAVA_URL)}
 
         data, depths = asyncio.run(parse_all_data_async(data_list))
 
@@ -216,12 +223,11 @@ def sync_graph():
             with open(SYNC_STATUS_PATH, "w", encoding="utf-8") as f:
                 json.dump({"progress": 0, "status": "🔄 Käivitan graafi uuenduse..."}, f)
 
-            # 1️⃣ Kustuta vana cache (nii JSON kui RDF diskcache)
-            if os.path.exists(GRAPH_CACHE_PATH):
-                os.remove(GRAPH_CACHE_PATH)
-            CACHE.clear()
+            # 1️⃣ Säilita vana cache kuni uus on edukalt valmis.
+            # (Ära kustuta ette — kui ehitus kukub, jääks server ilma graafita.
+            # Lõpus kirjutame faili üle ainult eduka ehituse korral.)
             with open(SYNC_STATUS_PATH, "w", encoding="utf-8") as f:
-                json.dump({"progress": 5, "status": "🗑️ Vana cache kustutatud..."}, f)
+                json.dump({"progress": 5, "status": "🔄 Valmistan uut graafi (vana säilib)..."}, f)
 
             # 2️⃣ Lae RDF andmete kategooriad
             urls = [

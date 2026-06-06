@@ -1,36 +1,8 @@
-import os
-import ssl
 import json
-
-from IPython.core.display import Math
-from pyvis import node
-
-ssl._create_default_https_context = ssl._create_unverified_context
-
-# --- Std lib / 3rd party ---
-import time
-import asyncio, aiohttp, async_timeout
-import requests
-from bs4 import BeautifulSoup
+import os
+import re
 from urllib.parse import unquote
 
-from aiolimiter import AsyncLimiter
-from diskcache import Cache
-
-from rdflib import Graph, Namespace, URIRef
-from rdflib.namespace import RDFS
-
-from pyvis.network import Network
-import networkx as nx
-
-import re
-
-# =========================
-#      CONSTANTS / RDF
-# =========================
-EDU = Namespace("https://schema.edu.ee/")
-SCHEMA = Namespace("https://schema.org/")
-BASE_RDF = "https://oppekava.edu.ee/a/Special:ExportRDF/"
 DISPLAY_URL = "https://oppekava.edu.ee/a/"
 SKILLS_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Oskus"
 COMPETENCIES_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Kompetents"
@@ -42,119 +14,36 @@ OPPEAINE_TASEMEOPE_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:OppeaineT
 VALDKONNA_KOMPETENTSIPROFIIL_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:ValdkonnaKompetentsiProfiil"
 OPPEKAVA_URL = "https://oppekava.edu.ee/a/Kategooria:Haridus:Oppekava"
 
-ESCO_LINK = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aesco_link")
-ESCO_VASTE = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aesco_vaste")
-OSK_REG_KOOD = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aosk_reg_kood")
-VERB = URIRef("https://schema.edu.ee/verb")
-RELEVANT_OCCUPATION = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3ASchema-3ArelevantOccupation")
-
-OSAOSKUS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AosaOskus")
-SEOTUD_OSKUS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AeeldusOskus")
-SEOTUD = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3Aseotud")
-
-KOMP_SISALDAB_TN = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKompSisaldabTn")
-KOMP_EELDAB_OSKREG = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKompEeldabOskreg")
-TN_SISALDAB_KNOBITIT = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnSisaldabKnobitit")
-TN_EELDAB = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnEeldab")
-KNOBITI_LIIK = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AKnobitiLiik")
-OV_SISALDAB_KNOBITIT = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AOvSisaldabKnobitit")
-TN_MOODAB_OV = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3ATnMoodabOv")
-
-KNOBIT_EELDAB = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKnobitEeldab")
-KNOBIT_SISALDAB = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AHaridus-3AKnobitSisaldab")
-
-OPPEAINE_EESMARGID = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AOppeaineEesmargid")
-OPPEAINE_MAHT_EAP = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AOppeaineMahtEAP")
-OPPEASUTUS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AOppeasutus")
-COURSE_CODE = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3ASchema-3AcourseCode")
-
-OPPEKAVA_NIMETUS_EN = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3AOppekavaNimetusEn")
-SCHEMA_IDENTIFIER = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3ASchema-3Aidentifier")
-SCHEMA_NUM_CREDITS = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3ASchema-3AnumberOfCredits")
-SCHEMA_PROVIDER = URIRef("http://oppekava.edu.ee/a/Special:URIResolver/Property-3ASchema-3Aprovider")
-
-EELDAB = URIRef("https://schema.edu.ee/eeldab")
-KLASS = URIRef("https://schema.edu.ee/klass")
-KOOLIASTE = URIRef("https://schema.edu.ee/kooliaste")
-SEOTUD_OPPEAINE = URIRef("https://schema.edu.ee/seotudOppeaine")
-SEOTUD_TEEMA = URIRef("https://schema.edu.ee/seotudTeema")
-
-
-# =========================
-#   CONFIGURATION FLAGS
-# =========================
-LIMIT_RECURSION = False
-MAX_DEPTH = 999_999_999
-EXPORT_GRAPHML = True
-
-# --- Async loader config ---
-MAX_CONCURRENCY = 32          # mitu RDF päringut korraga
-REQS_PER_SEC = 8              # kiirus serveri vastu
-HTTP_TIMEOUT_SEC = 15
-RETRIES = 4                   # eksponentsiaalne backoff
-CACHE_TTL = 60 * 60 * 24 * 14 # 14 päeva
-
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CACHE = Cache(os.path.join(_BASE_DIR, "rdf_cache"))
-SEM = asyncio.Semaphore(MAX_CONCURRENCY)
-RATE = AsyncLimiter(REQS_PER_SEC, time_period=1)
-HEADERS = {
-    "User-Agent": "skills-crawler/1.0 (+contact: you@example.com)",
-    "Accept-Encoding": "gzip, deflate",
-}
+RELATION_CONFIG_PATH = os.path.join(_BASE_DIR, "data", "relation_config.json")
 
-# =========================
-#       UTILITIES
-# =========================
-
-DOUBLE_TAG_RE = re.compile(
-    rb'(<[^>]*datatype\s*=\s*(?:"|\')http://www\.w3\.org/2001/XMLSchema#double(?:"|\')[^>]*>)([\s\S]*?)(</\s*[^>]+>)',
-    re.IGNORECASE
-)
 
 SMW_HEX_RE = re.compile(r'-(?P<h>[0-9A-Fa-f]{2})')
 
+
 def decode_smw_hex(s: str) -> str:
+    """Decode SMW's -XX hex escapes (e.g. -2C -> ',') in ASCII printable range."""
     def repl(m):
         code = int(m.group('h'), 16)
         ch = chr(code)
-        # dekodeeri kõik printitavad ASCII märgid (tühik kuni ~)
         if 0x20 <= code <= 0x7E:
             return ch
-        return m.group(0)  # mitte-printitavad jäta alles
+        return m.group(0)
     return SMW_HEX_RE.sub(repl, s)
 
-def fix_decimal_commas(xml_bytes: bytes) -> bytes:
-    """
-    Asendab xsd:double elementide TEXT-is koma punktiga.
-    Ei puutu teisi elemente. Teeme seda ka cache-hit'i puhul.
-    """
-    def _repl(m):
-        open_tag = m.group(1)
-        content  = m.group(2)
-        close_tag= m.group(3)
-        # Vahel on seal whitespace’e – kärbime servad, aga säilitame algse spacing’u
-        # Lihtne strateegia: asenda kõik komad punktidega sisu sees
-        fixed = content.replace(b',', b'.')
-        return open_tag + fixed + close_tag
-
-    return DOUBLE_TAG_RE.sub(_repl, xml_bytes)
 
 def uri_to_skill_name(uri: str) -> str:
-    # võta viimane fragment, URL-dekooderi järel dekodeeri ka SMW heksid
     frag = unquote(uri.split("/")[-1])
-    frag = decode_smw_hex(frag)
-    return frag
+    return decode_smw_hex(frag)
+
 
 def uri_to_label(uri: str) -> str:
-    # inimloetav silt: dekodeeri ja muuda "_" -> " "
     frag = unquote(uri.split("/")[-1])
-    frag = decode_smw_hex(frag)
-    return frag.replace("_", " ")
+    return decode_smw_hex(frag).replace("_", " ")
+
 
 def normalize_key(s: str) -> str:
-    # KANOONILINE KEY: alati sama, sõltumata sellest,
-    # kas lähtekujuks oli koma või "-2C"
+    """Canonical key: decode hex, strip, underscore-collapse, drop trailing (NN)."""
     s = unquote(s)
     s = decode_smw_hex(s)
     s = s.strip()
@@ -163,239 +52,20 @@ def normalize_key(s: str) -> str:
     s = re.sub(r"\(\d{1,2}\)$", "", s)
     return s
 
+
 def _skill_key(skill_name: str) -> str:
     return normalize_key(skill_name)
-# =========================
-#       SCRAPER
-# =========================
-RELATION_CONFIG_PATH = os.path.join(_BASE_DIR, "data", "relation_config.json")
 
-def load_relation_config():
+
+def load_relation_config() -> dict:
     if os.path.exists(RELATION_CONFIG_PATH):
         with open(RELATION_CONFIG_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
 
-def get_all_data(category_url: str):
-    """
-    Loeb kategoorialehelt ja kõigilt järgmistelt lehtedelt kõik elemendid.
-    """
-    datas = set()
-    try:
-        next_url = category_url
-        while next_url:
-            response = requests.get(next_url, timeout=20)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.content, "html.parser")
 
-            # leia kõik elemendid
-            for link in soup.find_all("a", href=True):
-                href = link["href"]
-                if href.startswith("/a/") and not href.startswith("/a/Kategooria") and not href.startswith("/a/Eri:"):
-                    datas.add(href.split("/a/")[-1])
+from logic.ask_api import parse_all_data_async, get_all_data
+from logic import ask_api
 
-            # otsi “järgmine lehekülg” link
-            next_link = soup.find("a", string="järgmine lehekülg")
-            if next_link and next_link["href"]:
-                next_url = "https://oppekava.edu.ee" + next_link["href"]
-            else:
-                next_url = None  # viimane leht
-
-        print(f"Found {len(datas)} data from {category_url}")
-
-    except Exception as e:
-        print(f"Error retrieving data from {category_url}: {e}")
-
-    return [normalize_key(d) for d in datas]
-
-# =========================
-#    ASYNC RDF LOADING
-# =========================
-async def _fetch_rdf(session: aiohttp.ClientSession, skill_name: str) -> bytes:
-    """
-    Võrgupäring RDF-XML-ile koos ketta-cache, paralleelsuse ja backoffiga.
-    """
-    cache_key = f"rdf_v2:{skill_name}"
-    cached = CACHE.get(cache_key)
-    if cached is not None:
-        # ka hit'i puhul jookse läbi fix (kui mõni vana v2 sisse satub)
-        fixed = fix_decimal_commas(cached)
-        if fixed != cached:
-            CACHE.set(cache_key, fixed, expire=CACHE_TTL)
-        return fixed
-
-    url = BASE_RDF + skill_name
-    async with SEM, RATE:
-        for attempt in range(RETRIES):
-            try:
-                async with async_timeout.timeout(HTTP_TIMEOUT_SEC):
-                    async with session.get(url, headers=HEADERS, ssl=False) as resp:
-                        resp.raise_for_status()
-                        blob = await resp.read()
-                        blob = fix_decimal_commas(blob)  # ⬅️ parandame ENNE cache’i
-                        CACHE.set(cache_key, blob, expire=CACHE_TTL)
-                        return blob
-            except Exception:
-                await asyncio.sleep(0.5 * (2 ** attempt))
-        raise RuntimeError(f"Failed to fetch {skill_name} after {RETRIES} attempts")
-
-def _parse_graph_from_bytes(xml_bytes: bytes) -> Graph:
-    g = Graph()
-    g.parse(data=xml_bytes, format="xml")
-    return g
-
-def _extract_subject_and_description(g: Graph, skill_name: str):
-    subject_uri = None
-    description = ""
-    label_match = uri_to_label(skill_name).lower()
-
-    for s in g.subjects(predicate=SCHEMA.name):
-        name_val = str(g.value(s, SCHEMA.name, default="")).strip().lower()
-        if name_val == label_match:
-            subject_uri = s
-            description = str(g.value(s, SCHEMA.description, default=""))
-            break
-
-    if subject_uri is None:
-        for s in g.subjects(predicate=RDFS.label):
-            name_val = str(g.value(s, RDFS.label, default="")).strip().lower()
-            if name_val == label_match:
-                subject_uri = s
-                description = str(g.value(s, SCHEMA.description, default=""))
-                break
-
-    if subject_uri is None:
-        subject_uri = URIRef(BASE_RDF + skill_name)
-
-    return subject_uri, description
-
-async def _process_one(session: aiohttp.ClientSession, skill_name: str, depth: int,
-                       data: dict, depths: dict, q: asyncio.Queue, visited: set):
-    """
-    Laeb ühe oskuse RDF-i, täidab väljad ja lisab järgmiseks sammuks naabrite nimed järjekorda.
-    """
-    try:
-        xml = await _fetch_rdf(session, skill_name)
-        g_rdf = _parse_graph_from_bytes(xml)
-        subject_uri, description = _extract_subject_and_description(g_rdf, skill_name)
-
-        label = uri_to_label(skill_name)
-        key = normalize_key(skill_name)
-        depths[key] = min(depth, depths.get(key, depth))
-
-        relevant_occupations = []
-        for occ in g_rdf.objects(subject=subject_uri, predicate=RELEVANT_OCCUPATION):
-            occ_uri = str(occ)
-            occ_label = str(g_rdf.value(occ, RDFS.label, default=uri_to_label(occ_uri)))
-            relevant_occupations.append({
-                "uri": occ_uri,
-                "label": occ_label
-            })
-
-        node = data.get(key)
-        if not node:
-            node = data[key] = {
-                "label": label,
-                "uri": subject_uri,
-                "description": description,
-                "link": DISPLAY_URL + skill_name,
-                "subskills": [],
-                "prerequisites": [],
-                "competencies": [],
-                "tegevusnaitajad": [],
-                "knobitid": [],
-                "esco_link": str(g_rdf.value(subject_uri, ESCO_LINK, default="")),
-                "esco_vaste": str(g_rdf.value(subject_uri, ESCO_VASTE, default="")),
-                "osk_reg_kood": str(g_rdf.value(subject_uri, OSK_REG_KOOD, default="")),
-                "skill_verb": str(g_rdf.value(subject_uri, VERB, default="")),
-                "relevant_occupations": relevant_occupations,
-                "klass": str(g_rdf.value(subject_uri, KLASS, default="")),
-                "kooliaste": str(g_rdf.value(subject_uri, KOOLIASTE, default="")),
-                "seotud_oppeaine": str(g_rdf.value(subject_uri, SEOTUD_OPPEAINE, default="")),
-                "seotud_teema": str(g_rdf.value(subject_uri, SEOTUD_TEEMA, default="")),
-                "knobiti_liik": str(g_rdf.value(subject_uri, KNOBITI_LIIK, default="")),
-                "oppeaine_eesmargid": str(g_rdf.value(subject_uri, OPPEAINE_EESMARGID, default="")),
-                "oppeaine_maht_eap": str(g_rdf.value(subject_uri, OPPEAINE_MAHT_EAP, default="")),
-                "oppeasutus": str(g_rdf.value(subject_uri, OPPEASUTUS, default="")),
-                "course_code": str(g_rdf.value(subject_uri, COURSE_CODE, default="")),
-                "oppekava_nimetus_en": str(g_rdf.value(subject_uri, OPPEKAVA_NIMETUS_EN, default="")),
-                "oppekava_identifier": str(g_rdf.value(subject_uri, SCHEMA_IDENTIFIER, default="")),
-                "oppekava_credits": str(g_rdf.value(subject_uri, SCHEMA_NUM_CREDITS, default="")),
-                "oppekava_provider": str(g_rdf.value(subject_uri, SCHEMA_PROVIDER, default="")),
-            }
-
-        relation_config = load_relation_config()
-
-        for rel_name, rel in relation_config.items():
-            predicate = URIRef(rel["predicate"])
-
-            for o in g_rdf.objects(subject=subject_uri, predicate=predicate):
-                target_uri = str(o)
-                target_name = uri_to_skill_name(target_uri)
-                target_key = _skill_key(target_name)
-
-                node.setdefault(rel_name, []).append(target_key)
-
-                if not LIMIT_RECURSION or depth + 1 <= MAX_DEPTH:
-                    if target_key not in visited:
-                        visited.add(target_key)
-                        await q.put((target_name, depth + 1))
-
-    except Exception as e:
-        print(f"[warn] {skill_name}: {e}")
-
-async def parse_all_data_async(data_list):
-    """
-    Asünkroonne 'kogu graafi' kraapimine paralleelselt, külastatud-set kaitsega.
-    NB! Kui sisend on väga suur, on see siiski raske; aga kordades kiirem kui sünkroonne.
-    """
-    data, depths = {}, {}
-    visited = set()
-    q: asyncio.Queue = asyncio.Queue()
-
-    # esmane seeme
-    for s in data_list:
-        key = _skill_key(s)
-        if key not in visited:
-            visited.add(key)
-            q.put_nowait((s, 0))
-
-    async with aiohttp.ClientSession() as session:
-        async def worker():
-            while True:
-                try:
-                    skill_name, depth = await q.get()
-                except asyncio.CancelledError:
-                    return
-                await _process_one(session, skill_name, depth, data, depths, q, visited)
-                q.task_done()
-
-        workers = [asyncio.create_task(worker()) for _ in range(MAX_CONCURRENCY)]
-        await q.join()
-        for w in workers:
-            w.cancel()
-        await asyncio.gather(*workers, return_exceptions=True)
-
-    sample = list(data.keys())
-    #print(f"✅ Andmestikus olevad oskused: {sample}")
-    if "Probleemilahendus" not in data:
-        print("❌ Probleemilahendus puudub data-s!")
-
-    return data, depths
-# =========================
-#        MAIN
-# =========================
-if __name__ == "__main__":
-    skills = get_all_data(SKILLS_URL)
-    competencies = get_all_data(COMPETENCIES_URL)
-    tegevusnaitajad = get_all_data(TEGEVUSNAITAJAD_URL)
-    knobitid = get_all_data(KNOBITID_URL)
-    opivaljundid = get_all_data(OPIVALJUNDID_URL)
-
-    seed = skills + competencies + tegevusnaitajad + knobitid + opivaljundid
-
-    # UUS: asünkroonne täisgraafi laadimine (paralleel + cache)
-    parsed_data, depths = asyncio.run(parse_all_data_async(seed))
-
-
-parse_all_skills_recursive = parse_all_data_async
+LIMIT_RECURSION = ask_api.LIMIT_RECURSION
+MAX_DEPTH = ask_api.MAX_DEPTH
